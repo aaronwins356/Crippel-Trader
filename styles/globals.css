@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #f9fafb;
+  --card: #ffffff;
+  --positive: #22c55e;
+  --negative: #ef4444;
+  --text: #334155;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0f172a;
+    --card: #1e293b;
+    --positive: #4ade80;
+    --negative: #f87171;
+    --text: #e2e8f0;
+  }
+}
+
+body {
+  background-color: var(--background);
+  color: var(--text);
+  transition: background-color 0.3s, color 0.3s;
+}
+
+@layer base {
+  body {
+    @apply bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/60 dark:bg-slate-800/60 backdrop-blur-md rounded-2xl shadow-lg;
+  }
+  
+  .positive-change {
+    @apply bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-300;
+  }
+  
+  .negative-change {
+    @apply bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-300;
+  }
+}
