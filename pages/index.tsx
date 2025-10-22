@@ -1,3 +1,4 @@
+'use client';
 import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { WatchlistSection } from '@/components/watchlist/WatchlistSection';

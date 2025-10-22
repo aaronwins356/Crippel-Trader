@@ -20,6 +20,7 @@ A production-grade crypto-asset watchlist and comparison-graph subsystem with a 
 - **Charts**: Recharts
 - **State Management**: Zustand
 - **Data Fetching**: React Query (TanStack Query)
+- **Query Provider**: React Query Client Provider
 
 ### Backend
 - **Framework**: FastAPI (Python)
@@ -75,14 +76,20 @@ npm run start
 ## Project Structure
 
 ```
+├── app/                 # App Router (Next.js 14)
+│   ├── layout.tsx       # Root layout with providers
+│   ├── page.tsx         # Main dashboard page
+│   ├── providers.tsx    # React Query provider
+│   └── not-found.tsx   # 404 page
 ├── components/
 │   ├── comparison/
 │   └── watchlist/
 ├── lib/
 │   ├── api.ts
-│   └── store.ts
+│   ├── store.ts
+│   ├── queryClient.ts
 ├── pages/
-│   └── index.tsx
+│   └── index.tsx        # Legacy pages (used by app/page.tsx)
 ├── types/
 │   └── index.d.ts
 ├── backend/
@@ -98,6 +105,7 @@ npm run start
 - **Data Fetching**: React Query for API calls with automatic caching and refetching
 - **UI Components**: Modular, reusable components with TypeScript interfaces
 - **Styling**: TailwindCSS with dark mode support and glass-morphism effects
+- **Query Provider**: React Query Client Provider for proper query context
 
 ### Backend Architecture
 - **API Design**: RESTful endpoints with proper HTTP status codes
