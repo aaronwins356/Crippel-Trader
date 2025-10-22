@@ -1,175 +1,77 @@
-# Crypto Research Dashboard
+# Matrix LLM Chat
 
-A production-grade crypto-asset watchlist and comparison-graph subsystem with a clean, modern interface inspired by Coinbase's minimalist design and professional trading terminals.
+A Matrix-themed chat interface for your local LLM running in LM Studio. Experience chatting with AI in a futuristic terminal environment.
 
 ## Features
 
-- Real-time asset tracking with price updates
-- Interactive watchlist with mini-charts
-- Multi-asset comparison charts
-- Responsive design with light/dark mode
-- Smooth animations and transitions
-- Local storage persistence
+- Matrix code rain background animation
+- Terminal-style chat interface with green text on black background
+- Streaming responses from your local LLM with typing animation
+- Fully responsive design
+- Connection status indicator
+- Boot sequence animation
 
-## Tech Stack
+## Prerequisites
 
-### Frontend
-- **Framework**: Next.js 14 with App Router
-- **Language**: TypeScript
-- **Styling**: TailwindCSS + Framer Motion
-- **Charts**: Recharts
-- **State Management**: Zustand
-- **Data Fetching**: React Query (TanStack Query)
-- **Query Provider**: React Query Client Provider
+1. [LM Studio](https://lmstudio.ai/) installed and running locally
+2. A local LLM model loaded in LM Studio
+3. Node.js (v14 or higher) installed
 
-### Backend
-- **Framework**: FastAPI (Python)
-- **Data Store**: In-memory storage (easily replaceable with PostgreSQL)
+## Setup
 
-## Getting Started
+1. Clone or download this repository
 
-### Prerequisites
-- Node.js (v18.18.0 or later, < v21)
-- Python (v3.8 or later)
-- pip (Python package installer)
-
-### Quick Start with Batch Files
-
-#### Development Mode
-1. Double-click `start-dev.bat` to launch both frontend and backend in development mode
-2. Visit `http://localhost:3000` in your browser
-
-#### Production Mode
-1. Double-click `build-prod.bat` to build the application for production
-2. Double-click `start-prod.bat` to launch both frontend and backend in production mode
-3. Visit `http://localhost:3000` in your browser
-
-### Manual Installation
-
-1. **Frontend Setup**:
+2. Install dependencies:
    ```bash
-   npm ci
+   npm install
    ```
 
-2. **Backend Setup**:
+3. Ensure LM Studio is running:
+   - Open LM Studio
+   - Load a model
+   - Start the local server (default: http://localhost:1234)
+
+## Usage
+
+1. Start the application:
    ```bash
-   cd backend
-   pip install -r requirements.txt
+   npm start
    ```
 
-### Running the Application
-
-1. **Start the Backend Server**:
-   ```bash
-   cd backend
-   uvicorn main:app --reload
+2. Open your browser and navigate to:
+   ```
+   http://localhost:3000
    ```
 
-2. **Start the Frontend Development Server**:
-   ```bash
-   npm run dev
-   ```
+3. Wait for the boot sequence to complete
 
-3. Open your browser to `http://localhost:3000`
+4. Type your message in the input field and press Enter or click SEND
 
-### Production Build
+5. Watch as the AI responds with a streaming typing animation
 
-To create a production build:
-```bash
-npm run build
-```
+## How It Works
 
-To start the production server:
-```bash
-npm run start
-```
-
-## Project Structure
-
-```
-├── app/                 # App Router (Next.js 14)
-│   ├── layout.tsx       # Root layout with providers
-│   ├── page.tsx         # Main dashboard page
-│   ├── providers.tsx    # React Query provider
-│   └── not-found.tsx   # 404 page
-├── components/
-│   ├── comparison/
-│   └── watchlist/
-├── lib/
-│   ├── api.ts
-│   ├── store.ts
-│   ├── queryClient.ts
-├── pages/
-│   └── index.tsx        # Legacy pages (used by app/page.tsx)
-├── types/
-│   └── index.d.ts
-├── backend/
-│   ├── main.py
-│   └── requirements.txt
-└── public/
-```
-
-## Architecture
-
-### Frontend Architecture
-- **State Management**: Zustand for global watchlist state with localStorage persistence
-- **Data Fetching**: React Query for API calls with automatic caching and refetching
-- **UI Components**: Modular, reusable components with TypeScript interfaces
-- **Styling**: TailwindCSS with dark mode support and glass-morphism effects
-- **Query Provider**: React Query Client Provider for proper query context
-
-### Backend Architecture
-- **API Design**: RESTful endpoints with proper HTTP status codes
-- **Data Models**: Pydantic models for request/response validation
-- **Mock Data**: In-memory storage for demonstration purposes
-- **CORS**: Configured for local development
-
-## API Endpoints
-
-### Assets
-- `GET /api/assets` - Get all available assets with prices
-
-### Watchlist
-- `GET /api/watchlist` - Get user's watchlist
-- `POST /api/watchlist` - Add asset to watchlist
-- `DELETE /api/watchlist/{symbol}` - Remove asset from watchlist
-
-### Comparison
-- `GET /api/comparison?base=:base&compare=:compare` - Get historical data for comparison
-
-## Deployment
-
-This application is configured for deployment to Vercel with the following optimizations:
-
-- Explicit Node.js version pinning (18.18.0+)
-- Deterministic builds with `npm ci`
-- Proper cache configuration
-- Optimized build commands
+1. The frontend React app displays the Matrix-themed interface
+2. The Node.js/Express backend serves the frontend and proxies requests to LM Studio
+3. Messages are sent to LM Studio's OpenAI-compatible API endpoint
+4. Responses are streamed back token-by-token for a real-time typing effect
 
 ## Customization
 
-### Adding New Assets
-1. Add new asset objects to the `assets_store` in `backend/main.py`
-2. The frontend will automatically fetch and display new assets
+You can adjust the Matrix rain effect by modifying parameters in `src/MatrixRain.js`:
+- `fontSize`: Size of characters
+- `chars`: Characters used in the rain
+- Animation speed in the `setInterval` call
 
-### Styling
-- Modify Tailwind configuration in `tailwind.config.js`
-- Update color palette in `styles/globals.css`
+## Troubleshooting
 
-### Extending Functionality
-- Add new components in the `components/` directory
-- Create new API endpoints in `backend/main.py`
-- Extend TypeScript interfaces in `types/index.d.ts`
+- If you get connection errors, ensure LM Studio is running on http://localhost:1234
+- If the model doesn't respond, check that a model is loaded in LM Studio
+- For performance issues, reduce the number of raindrops in `MatrixRain.js`
 
-## Future Enhancements
+## Technologies Used
 
-- WebSocket integration for real-time updates
-- User authentication and personalized watchlists
-- Portfolio tracking with PnL calculations
-- AI-powered insights and recommendations
-- Export functionality for charts and data
-- Advanced charting features (zoom, pan, annotations)
-
-## License
-
-This project is licensed under the MIT License.
+- Frontend: React, CSS3
+- Backend: Node.js, Express
+- Animations: Canvas API for Matrix effect
+- Streaming: Fetch API with ReadableStream
