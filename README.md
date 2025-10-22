@@ -33,9 +33,19 @@ A Matrix-themed chat interface for your local LLM running in LM Studio. Experien
 
 ## Usage
 
-1. Start the application:
+### Development Mode
+
+1. Start the application in development mode:
    ```bash
    npm start
+   ```
+   or on Windows:
+   ```bash
+   start-dev.bat
+   ```
+   or on macOS/Linux:
+   ```bash
+   ./start-dev.sh
    ```
 
 2. Open your browser and navigate to:
@@ -43,11 +53,38 @@ A Matrix-themed chat interface for your local LLM running in LM Studio. Experien
    http://localhost:3000
    ```
 
-3. Wait for the boot sequence to complete
+### Production Mode
 
-4. Type your message in the input field and press Enter or click SEND
+1. Build the application for production:
+   ```bash
+   npm run build
+   ```
+   or on Windows:
+   ```bash
+   build-prod.bat
+   ```
+   or on macOS/Linux:
+   ```bash
+   ./build-prod.sh
+   ```
 
-5. Watch as the AI responds with a streaming typing animation
+2. Start the production server:
+   ```bash
+   node server.js
+   ```
+   or on Windows:
+   ```bash
+   start-prod.bat
+   ```
+   or on macOS/Linux:
+   ```bash
+   ./start-prod.sh
+   ```
+
+3. Open your browser and navigate to:
+   ```
+   http://localhost:3000
+   ```
 
 ## How It Works
 

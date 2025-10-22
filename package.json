@@ -6,13 +6,16 @@
   "scripts": {
     "server": "node server.js",
     "build": "webpack --mode production",
-    "start": "concurrently \"npm run server\" \"npm run build\""
+    "start": "concurrently \"npm run server\" \"npm run build\"",
+    "verify": "node scripts/verify-build.js"
   },
   "dependencies": {
     "express": "^4.18.2",
     "cors": "^2.8.5",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "http-proxy-middleware": "^2.0.6",
+    "html-webpack-plugin": "^5.5.0"
   },
   "devDependencies": {
     "webpack": "^5.88.0",
@@ -25,7 +28,6 @@
     "@babel/preset-react": "^7.22.0",
     "css-loader": "^6.8.0",
     "style-loader": "^3.3.0",
-    "html-webpack-plugin": "^5.5.0",
     "concurrently": "^8.2.0"
   }
 }
