@@ -33,7 +33,18 @@ A production-grade crypto-asset watchlist and comparison-graph subsystem with a 
 - Python (v3.8 or later)
 - pip (Python package installer)
 
-### Installation
+### Quick Start with Batch Files
+
+#### Development Mode
+1. Double-click `start-dev.bat` to launch both frontend and backend in development mode
+2. Visit `http://localhost:3000` in your browser
+
+#### Production Mode
+1. Double-click `build-prod.bat` to build the application for production
+2. Double-click `start-prod.bat` to launch both frontend and backend in production mode
+3. Visit `http://localhost:3000` in your browser
+
+### Manual Installation
 
 1. **Frontend Setup**:
    ```bash
