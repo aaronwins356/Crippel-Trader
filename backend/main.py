@@ -6,6 +6,10 @@ import random
 import json
 from datetime import datetime, timedelta
 
+# Import the new routers
+from api.predictions import router as predictions_router
+from api.charts import router as charts_router
+
 app = FastAPI(title="Crypto Dashboard API", version="1.0.0")
 
 # Add CORS middleware
@@ -16,6 +20,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include the new routers
+app.include_router(predictions_router)
+app.include_router(charts_router)
 
 # In-memory data stores
 watchlist_store: List[str] = ["BTC", "ETH"]
