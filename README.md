@@ -28,7 +28,7 @@ A production-grade crypto-asset watchlist and comparison-graph subsystem with a 
 ## Getting Started
 
 ### Prerequisites
-- Node.js (v18 or later)
+- Node.js (v18.18.0 or later, < v21)
 - Python (v3.8 or later)
 - pip (Python package installer)
 
@@ -36,7 +36,7 @@ A production-grade crypto-asset watchlist and comparison-graph subsystem with a 
 
 1. **Frontend Setup**:
    ```bash
-   npm install
+   npm ci
    ```
 
 2. **Backend Setup**:
@@ -59,6 +59,18 @@ A production-grade crypto-asset watchlist and comparison-graph subsystem with a 
    ```
 
 3. Open your browser to `http://localhost:3000`
+
+### Production Build
+
+To create a production build:
+```bash
+npm run build
+```
+
+To start the production server:
+```bash
+npm run start
+```
 
 ## Project Structure
 
@@ -105,6 +117,15 @@ A production-grade crypto-asset watchlist and comparison-graph subsystem with a 
 
 ### Comparison
 - `GET /api/comparison?base=:base&compare=:compare` - Get historical data for comparison
+
+## Deployment
+
+This application is configured for deployment to Vercel with the following optimizations:
+
+- Explicit Node.js version pinning (18.18.0+)
+- Deterministic builds with `npm ci`
+- Proper cache configuration
+- Optimized build commands
 
 ## Customization
 
