@@ -1,0 +1,1 @@
+{"id": "crypto-quant-bot-n6x2", "lang": "typescript"}
