@@ -20,24 +20,44 @@ const useTradingStream = (onPayload) => {
     const url = resolveSocketUrl();
     if (!url) return () => {};
 
-    const socket = new WebSocket(url);
-    socket.addEventListener('message', (event) => {
-      try {
-        const payload = JSON.parse(event.data);
-        if (handlerRef.current) {
-          handlerRef.current(payload);
-        }
-      } catch (error) {
-        console.error('Failed to parse message', error);
-      }
-    });
+    let socket;
+    let reconnectTimeout;
+    let shouldReconnect = true;
 
-    socket.addEventListener('error', (error) => {
-      console.error('WebSocket error', error);
-    });
+    const connect = () => {
+      socket = new WebSocket(url);
+      socket.addEventListener('message', (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (handlerRef.current) {
+            handlerRef.current(payload);
+          }
+        } catch (error) {
+          console.error('Failed to parse message', error);
+        }
+      });
+
+      socket.addEventListener('error', (error) => {
+        console.error('WebSocket error', error);
+      });
+
+      socket.addEventListener('close', () => {
+        if (shouldReconnect) {
+          reconnectTimeout = setTimeout(connect, 1500);
+        }
+      });
+    };
+
+    connect();
 
     return () => {
-      socket.close();
+      shouldReconnect = false;
+      if (socket) {
+        socket.close();
+      }
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
     };
   }, []);
 };

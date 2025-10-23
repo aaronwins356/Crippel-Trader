@@ -1,65 +1,114 @@
-# Crippel Trader
+# Crippel Trader v2.0
 
-Crippel Trader is a self-contained automated trading laboratory that simulates a multi-asset execution engine and renders a professional, quant-grade analytics surface. The backend produces synthetic yet realistic tick data, drives a systematic strategy, and exposes a WebSocket stream alongside a REST API. The React-based frontend consumes the live feed and visualizes market structure, portfolio risk, and strategy telemetry with a sleek institutional design.
+Crippel Trader v2.0 is a full-stack trading simulator that emulates an institutional quant workstation. All market data, analytics, and trades are synthetic and safe for local experimentation.
 
-## Architecture
+## Features
 
-- **Backend** – Node.js/Express server (`server.js`) backed by a `MarketDataService`. It continuously generates candles for cryptocurrencies, equities, and macro instruments, applies technical indicators, and runs an event-driven strategy through a shared `PortfolioService`. Results are available over:
-  - `GET /api/assets`, `GET /api/analytics`, `GET /api/portfolio`, `GET /api/orders`, and `GET /api/history/:symbol`
-  - `POST /api/orders` for manual overrides
-  - `ws://<host>/ws/stream` for high-frequency updates (market, analytics, portfolio, and strategy log)
-- **Frontend** – React application bundled with Webpack (`src/`). The dashboard showcases:
-  - Real-time price action for the selected asset with indicator telemetry
-  - Leader/laggard dispersion heat map
-  - Portfolio allocation pie, leverage gauges, and momentum vs RSI monitor
-  - Execution blotter and strategy timeline styled for an institutional command center
+- **Node.js + Express 5 backend** with synthetic tick generation, MACD/RSI/EMA analytics, automated portfolio management, and WebSocket streaming.
+- **React 18 dashboard** delivering real-time charts, alpha radar analytics, portfolio intelligence, and manual trade controls.
+- **Event-driven strategy engine** combining MACD momentum and RSI mean reversion heuristics to route simulated orders.
+- **WebSocket streaming API** broadcasting candles, analytics, portfolio metrics, and strategy logs to connected clients.
+- **Unit tests** covering market data generation, strategy execution, and REST endpoint responses.
 
 ## Getting Started
 
+### Prerequisites
+
+- Node.js 20+
+- npm 9+
+
+### Installation
+
 ```bash
 npm install
+```
+
+### Development Mode
+
+Run backend (port 4000) and frontend (port 3000) concurrently:
+
+```bash
 npm run dev
 ```
 
-The development script launches the Express server on **http://localhost:4000** and Webpack in watch mode. Visit **http://localhost:3000** to interact with the dashboard (the dev server proxies API and WebSocket requests).
+The dashboard is available at [http://localhost:3000](http://localhost:3000) with live data sourced from the local backend at port 4000.
 
-For a production build:
+### Production Build
+
+Generate an optimized frontend bundle and start the backend in production mode:
 
 ```bash
 npm run build
 npm start
 ```
 
-The `build` command emits static assets to `dist/`. `npm start` serves both the API and the precompiled frontend.
+### Testing
 
-## Manual Trading Overrides
-
-Submit manual orders via the REST API using JSON payloads:
+Execute the Jest test suite:
 
 ```bash
-curl -X POST http://localhost:4000/api/orders \
-  -H "Content-Type: application/json" \
-  -d '{"symbol":"BTC-USD","quantity":2,"price":41000}'
+npm test
 ```
 
-Positive quantity represents a buy, negative quantity a sell. The execution is validated against cash availability and feeds directly into the portfolio state and real-time stream.
-
-## Folder Structure
+## Project Structure
 
 ```
-backend/
-  data/seedAssets.js         # Instrument universe
-  services/                  # Market generator, portfolio engine, strategy
-  utils/                     # Technical indicator math
-src/
-  components/                # UI building blocks
-  hooks/useTradingStream.js  # WebSocket abstraction
-  utils/format.js            # Formatting helpers
-  App.js                     # Dashboard layout
-  index.js / index.html      # Entry point
-  styles.css                 # Quant aesthetic theme
+crippel-trader/
+├── backend/
+│   ├── server.js
+│   ├── data/
+│   │   └── seedAssets.js
+│   ├── services/
+│   │   ├── MarketDataService.js
+│   │   ├── PortfolioService.js
+│   │   ├── StrategyService.js
+│   │   └── WebSocketService.js
+│   └── utils/
+│       ├── indicators.js
+│       └── logger.js
+├── src/
+│   ├── components/
+│   │   ├── AnalyticsPanel.jsx
+│   │   ├── ChartPanel.jsx
+│   │   ├── HeaderBar.jsx
+│   │   ├── PortfolioPanel.jsx
+│   │   └── TradeControls.jsx
+│   ├── hooks/useTradingStream.js
+│   ├── utils/format.js
+│   ├── App.js
+│   ├── index.js
+│   ├── index.html
+│   └── styles.css
+├── tests/
+│   ├── test_api.js
+│   ├── test_market.js
+│   └── test_strategy.js
+├── package.json
+├── webpack.config.js
+├── .env.example
+├── README.md
+└── ...
 ```
 
-## Disclaimer
+## API Overview
 
-Crippel Trader is a fully synthetic environment designed for demonstration and educational purposes. It **does not** connect to live markets nor execute real trades.
+### REST
+
+- `GET /api/assets` — list of tracked assets and current prices.
+- `GET /api/analytics` — full indicator suite for each asset.
+- `GET /api/portfolio` — portfolio state, positions, and risk metrics.
+- `GET /api/orders` — recent trades executed by the system or manually.
+- `GET /api/history/:symbol` — recent candle history for the requested symbol.
+- `POST /api/orders` — manual order override `{ symbol, quantity, price? }`.
+
+### WebSocket
+
+- `ws://localhost:4000/ws/stream` — pushes `market:update` payloads with market data, analytics, portfolio metrics, and strategy logs, plus `strategy:trade` events on execution.
+
+## Security & Ethics
+
+Crippel Trader operates entirely on synthetic data. It never connects to live exchanges, stores credentials, or manages real capital. The simulator is intended for educational and research purposes only.
+
+## License
+
+MIT © 2024 Crippel Trader Contributors
