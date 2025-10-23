@@ -1,9 +1,12 @@
-const path = require('path');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
+import path from 'path';
+import { fileURLToPath } from 'url';
+import HtmlWebpackPlugin from 'html-webpack-plugin';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const isProduction = process.env.NODE_ENV === 'production';
 
-module.exports = {
+export default {
   entry: './src/index.js',
   output: {
     path: path.resolve(__dirname, 'dist'),
@@ -19,7 +22,7 @@ module.exports = {
         use: {
           loader: 'babel-loader',
           options: {
-            presets: ['@babel/preset-env', '@babel/preset-react']
+            cacheDirectory: true
           }
         }
       },
@@ -47,8 +50,9 @@ module.exports = {
       directory: path.join(__dirname, 'dist')
     },
     compress: true,
-    historyApiFallback: true,
     port: 3000,
+    historyApiFallback: true,
+    hot: true,
     proxy: {
       '/api': 'http://localhost:4000',
       '/ws': {
