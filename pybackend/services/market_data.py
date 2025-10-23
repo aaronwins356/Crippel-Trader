@@ -22,6 +22,7 @@ from ..utils.indicators import (
     normalize_number,
 )
 from ..utils.logger import get_child
+from .integrations.kraken import KrakenMarketDataFeed
 from .portfolio import PortfolioService
 from .strategy import StrategyService
 
@@ -56,6 +57,17 @@ class MarketDataService:
         self._task: Optional[asyncio.Task] = None
         self._loop: Optional[asyncio.AbstractEventLoop] = None
         self._running = False
+        self._asset_lookup: Dict[str, Dict[str, Any]] = {
+            asset["symbol"]: asset for asset in self.assets
+        }
+        self._kraken_pairs = self._build_kraken_pairs()
+        self._kraken_symbols = set(self._kraken_pairs.values())
+        self._kraken_feed: Optional[KrakenMarketDataFeed] = None
+        self._kraken_task: Optional[asyncio.Task] = None
+        self._kraken_enabled = False
+        self._kraken_candle_state: Dict[str, Dict[str, Any]] = {}
+        self._kraken_volume_totals: Dict[str, float] = {}
+        self._kraken_last_broadcast: Dict[str, datetime] = {}
 
         for asset in self.assets:
             self.history[asset["symbol"]] = self.generate_seed_history(asset)
@@ -94,6 +106,13 @@ class MarketDataService:
             return
         self._loop = asyncio.get_running_loop()
         self._running = True
+        if self._kraken_pairs and not self._kraken_task:
+            self._kraken_feed = KrakenMarketDataFeed(
+                list(self._kraken_pairs.keys()),
+                self._handle_kraken_ticker,
+            )
+            self._kraken_enabled = bool(self._kraken_pairs)
+            self._kraken_task = asyncio.create_task(self._run_kraken_feed())
         self._task = asyncio.create_task(self._run())
 
     async def stop(self) -> None:
@@ -105,6 +124,25 @@ class MarketDataService:
             except asyncio.CancelledError:
                 pass
         self._task = None
+        if self._kraken_task:
+            if self._kraken_feed:
+                await self._kraken_feed.stop()
+            self._kraken_task.cancel()
+            try:
+                await self._kraken_task
+            except asyncio.CancelledError:
+                pass
+            self._kraken_task = None
+            self._kraken_feed = None
+        self._kraken_enabled = False
+        for symbol, state in list(self._kraken_candle_state.items()):
+            try:
+                self._finalize_kraken_candle(symbol, state)
+            except Exception as exc:  # pragma: no cover - defensive logging
+                logger.warning("Failed to finalize Kraken candle", exc_info=exc)
+        self._kraken_candle_state.clear()
+        self._kraken_volume_totals.clear()
+        self._kraken_last_broadcast.clear()
         self._loop = None
 
     async def _run(self) -> None:
@@ -113,6 +151,18 @@ class MarketDataService:
             self.tick()
             elapsed = time.perf_counter() - start
             await asyncio.sleep(max(0.0, self.interval_seconds - elapsed))
+
+    async def _run_kraken_feed(self) -> None:
+        if not self._kraken_feed:
+            return
+        try:
+            await self._kraken_feed.run()
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:  # pragma: no cover - defensive logging
+            logger.exception("Kraken market data feed terminated", exc_info=exc)
+        finally:
+            self._kraken_enabled = False
 
     def rebuild_snapshots(self) -> None:
         self.snapshots = {
@@ -124,6 +174,7 @@ class MarketDataService:
             }
             for asset in self.assets
         }
+        self._asset_lookup = {asset["symbol"]: asset for asset in self.assets}
 
     def generate_seed_history(self, asset: Dict[str, Any]) -> List[Dict[str, float]]:
         candles: List[Dict[str, float]] = []
@@ -152,11 +203,114 @@ class MarketDataService:
             price = close
         return candles
 
+    def _build_kraken_pairs(self) -> Dict[str, str]:
+        pairs: Dict[str, str] = {}
+        for asset in self.assets:
+            pair = self._kraken_pair_for_symbol(asset["symbol"])
+            if pair:
+                pairs[pair] = asset["symbol"]
+        return pairs
+
+    @staticmethod
+    def _kraken_pair_for_symbol(symbol: str) -> Optional[str]:
+        mapping = {
+            "BTC-USD": "XBT/USD",
+        }
+        if symbol in mapping:
+            return mapping[symbol]
+        if "-" in symbol:
+            base, quote = symbol.split("-", 1)
+            return f"{base}/{quote}"
+        return None
+
+    def _finalize_kraken_candle(self, symbol: str, state: Dict[str, Any]) -> None:
+        candles = self.history.setdefault(symbol, [])
+        candle = {
+            "timestamp": (state["bucket"] + timedelta(minutes=1)).isoformat(),
+            "open": state["open"],
+            "high": state["high"],
+            "low": state["low"],
+            "close": state["close"],
+            "volume": max(state.get("volume", 0.0), 0.0),
+        }
+        candles.append(candle)
+        if len(candles) > self.HISTORY_LIMIT:
+            candles.pop(0)
+
+    def _handle_kraken_ticker(self, pair: str, payload: Dict[str, Any]) -> None:
+        symbol = self._kraken_pairs.get(pair)
+        if not symbol:
+            return
+        asset = self._asset_lookup.get(symbol)
+        if not asset:
+            return
+        price_data = payload.get("c") or []
+        try:
+            price = float(price_data[0])
+        except (IndexError, TypeError, ValueError):
+            return
+
+        previous_price = float(asset.get("price") or price)
+        now = datetime.utcnow()
+        change = price - previous_price
+        change_percent = 0.0 if previous_price == 0 else (change / previous_price) * 100
+
+        volume_values = payload.get("v") or []
+        try:
+            volume_total = float(volume_values[0])
+        except (IndexError, TypeError, ValueError):
+            volume_total = 0.0
+        previous_total = self._kraken_volume_totals.get(symbol)
+        volume_delta = 0.0 if previous_total is None else max(volume_total - previous_total, 0.0)
+        self._kraken_volume_totals[symbol] = volume_total
+
+        asset["price"] = normalize_number(price, 4)
+        asset["lastUpdate"] = now.isoformat()
+        asset["change"] = normalize_number(change, 4)
+        asset["changePercent"] = normalize_number(change_percent, 2)
+        asset["volume"] = normalize_number(volume_delta, 2)
+
+        bucket = now.replace(second=0, microsecond=0)
+        state = self._kraken_candle_state.get(symbol)
+        if not state or state["bucket"] != bucket:
+            if state:
+                self._finalize_kraken_candle(symbol, state)
+            state = {
+                "bucket": bucket,
+                "open": price,
+                "high": price,
+                "low": price,
+                "close": price,
+                "volume": volume_delta,
+            }
+            self._kraken_candle_state[symbol] = state
+        else:
+            state["close"] = price
+            state["high"] = max(state["high"], price)
+            state["low"] = min(state["low"], price)
+            state["volume"] += volume_delta
+
+        if symbol in self.snapshots:
+            self.snapshots[symbol]["price"] = asset["price"]
+
+        candles = self.history.setdefault(symbol, [])
+        trade = self.strategy_service.process(symbol, candles, asset)
+        if trade:
+            self._emit("trade", trade)
+
+        self._kraken_enabled = True
+
+        last_broadcast = self._kraken_last_broadcast.get(symbol)
+        if not last_broadcast or (now - last_broadcast).total_seconds() >= 1.0:
+            self._kraken_last_broadcast[symbol] = now
+            self.broadcast()
+
     def tick(self, initial: bool = False) -> None:
         try:
-            updated_assets: List[Dict[str, Any]] = []
             for asset in self.assets:
                 symbol = asset["symbol"]
+                if self._kraken_enabled and symbol in self._kraken_symbols:
+                    continue
                 candles = self.history.get(symbol, [])
                 previous = candles[-1] if candles else {
                     "close": asset["basePrice"],
@@ -182,26 +336,21 @@ class MarketDataService:
                 candles.append(candle)
                 if len(candles) > self.HISTORY_LIMIT:
                     candles.pop(0)
-                self.history[symbol] = candles
 
-                change = close - asset["price"]
-                change_percent = 0.0 if asset["price"] == 0 else (change / asset["price"]) * 100
-                updated = {
-                    **asset,
-                    "price": normalize_number(close, 4),
-                    "lastUpdate": candle["timestamp"],
-                    "change": normalize_number(change, 4),
-                    "changePercent": normalize_number(change_percent, 2),
-                    "volume": normalize_number(volume, 2),
-                }
+                previous_price = float(asset.get("price") or close)
+                change = close - previous_price
+                change_percent = 0.0 if previous_price == 0 else (change / previous_price) * 100
+
+                asset["price"] = normalize_number(close, 4)
+                asset["lastUpdate"] = candle["timestamp"]
+                asset["change"] = normalize_number(change, 4)
+                asset["changePercent"] = normalize_number(change_percent, 2)
+                asset["volume"] = normalize_number(volume, 2)
 
                 trade = self.strategy_service.process(symbol, candles, asset)
                 if trade:
                     self._emit("trade", trade)
 
-                updated_assets.append(updated)
-
-            self.assets = updated_assets
             self.rebuild_snapshots()
             self.broadcast()
         except Exception as exc:  # pragma: no cover - defensive logging
