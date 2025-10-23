@@ -1,11 +1,28 @@
-"""Integration tests for the FastAPI trading backend."""
+"""Integration tests for the FastAPI trading control backend."""
 
 from __future__ import annotations
 
 from fastapi.testclient import TestClient
 import pytest
 
-from pybackend.server import app, market_data_service, trading_mode_service
+from pybackend.server import SettingsPayload, app, settings_store
+
+DEFAULT_SETTINGS = {
+    "risk": 0.2,
+    "trade_frequency": "medium",
+    "max_positions": 5,
+}
+
+
+@pytest.fixture(autouse=True)
+def reset_state():
+    """Ensure each test runs with a predictable settings baseline."""
+
+    settings_store.update_settings(SettingsPayload(**DEFAULT_SETTINGS))
+    settings_store.set_status("stopped")
+    yield
+    settings_store.update_settings(SettingsPayload(**DEFAULT_SETTINGS))
+    settings_store.set_status("stopped")
 
 
 @pytest.fixture(scope="module")
@@ -14,42 +31,61 @@ def client():
         yield test_client
 
 
-def ensure_paper_state():
-    trading_mode_service.set_mode("paper")
-    market_data_service.tick()
-
-
-def test_get_assets(client):
-    ensure_paper_state()
-    response = client.get("/api/assets")
+def test_get_settings_returns_defaults(client):
+    response = client.get("/api/settings")
     assert response.status_code == 200
     payload = response.json()
-    assert "assets" in payload
-    assert isinstance(payload["assets"], list)
-    assert len(payload["assets"]) > 0
+    for key, value in DEFAULT_SETTINGS.items():
+        if isinstance(value, float):
+            assert payload[key] == pytest.approx(value)
+        else:
+            assert payload[key] == value
+    assert "updated_at" in payload
 
 
-def test_get_history(client):
-    ensure_paper_state()
-    symbol = market_data_service.assets[0]["symbol"]
-    response = client.get(f"/api/history/{symbol}")
+def test_can_update_settings(client):
+    new_payload = {
+        "risk": 0.35,
+        "trade_frequency": "high",
+        "max_positions": 12,
+    }
+    response = client.post("/api/settings", json=new_payload)
     assert response.status_code == 200
-    body = response.json()
-    assert body["symbol"] == symbol
-    assert isinstance(body["candles"], list)
-    assert len(body["candles"]) > 0
+    updated = response.json()
+    for key, value in new_payload.items():
+        if isinstance(value, float):
+            assert updated[key] == pytest.approx(value)
+        else:
+            assert updated[key] == value
+
+    # Verify persistence via a subsequent GET.
+    follow_up = client.get("/api/settings")
+    assert follow_up.status_code == 200
+    persisted = follow_up.json()
+    for key, value in new_payload.items():
+        if isinstance(value, float):
+            assert persisted[key] == pytest.approx(value)
+        else:
+            assert persisted[key] == value
 
 
-def test_post_orders_updates_portfolio(client):
-    ensure_paper_state()
-    symbol = market_data_service.assets[0]["symbol"]
-    order_response = client.post("/api/orders", json={"symbol": symbol, "quantity": 1})
-    assert order_response.status_code == 201
-    trade = order_response.json()
-    assert trade["symbol"] == symbol
+def test_rejects_invalid_settings(client):
+    response = client.post(
+        "/api/settings",
+        json={"risk": 2, "trade_frequency": "medium", "max_positions": 5},
+    )
+    assert response.status_code == 422
 
-    portfolio_response = client.get("/api/portfolio")
-    assert portfolio_response.status_code == 200
-    portfolio = portfolio_response.json()
-    positions = portfolio.get("positions", [])
-    assert any(position["symbol"] == symbol and position["quantity"] > 0 for position in positions)
+
+def test_status_round_trip(client):
+    status_response = client.get("/api/status")
+    assert status_response.status_code == 200
+    assert status_response.json()["status"] == "stopped"
+
+    update_response = client.post("/api/status", json={"status": "running"})
+    assert update_response.status_code == 200
+    assert update_response.json()["status"] == "running"
+
+    final_response = client.get("/api/status")
+    assert final_response.status_code == 200
+    assert final_response.json()["status"] == "running"
