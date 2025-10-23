@@ -9,7 +9,7 @@ const resolveSocketUrl = () => {
   return `${protocol}//${host}/ws/stream`;
 };
 
-const useTradingStream = (onPayload) => {
+const useTradingStream = (onPayload, { enabled = true } = {}) => {
   const handlerRef = useRef(onPayload);
 
   useEffect(() => {
@@ -17,6 +17,9 @@ const useTradingStream = (onPayload) => {
   }, [onPayload]);
 
   useEffect(() => {
+    if (!enabled) {
+      return () => {};
+    }
     const url = resolveSocketUrl();
     if (!url) return () => {};
 
@@ -59,7 +62,7 @@ const useTradingStream = (onPayload) => {
         clearTimeout(reconnectTimeout);
       }
     };
-  }, []);
+  }, [enabled]);
 };
 
 export default useTradingStream;
