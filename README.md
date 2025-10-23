@@ -4,7 +4,7 @@ Crippel Trader v2.0 is a full-stack trading simulator that emulates an instituti
 
 ## Features
 
-- **Node.js + Express 5 backend** with synthetic tick generation, MACD/RSI/EMA analytics, automated portfolio management, and WebSocket streaming.
+- **Python FastAPI backend** powering synthetic tick generation, MACD/RSI/EMA analytics, automated portfolio management, and WebSocket streaming.
 - **React 18 dashboard** delivering real-time charts, alpha radar analytics, portfolio intelligence, and manual trade controls.
 - **Event-driven strategy engine** combining MACD momentum and RSI mean reversion heuristics to route simulated orders.
 - **WebSocket streaming API** broadcasting candles, analytics, portfolio metrics, and strategy logs to connected clients.
@@ -16,11 +16,13 @@ Crippel Trader v2.0 is a full-stack trading simulator that emulates an instituti
 
 - Node.js 20+
 - npm 9+
+- Python 3.11+
 
-### Installation
+Install JavaScript and Python dependencies:
 
 ```bash
 npm install
+python -m pip install -r requirements.txt
 ```
 
 ### Development Mode
@@ -44,7 +46,7 @@ npm start
 
 ### Testing
 
-Execute the Jest test suite:
+Execute the Python test suite:
 
 ```bash
 npm test
@@ -54,18 +56,19 @@ npm test
 
 ```
 crippel-trader/
-├── backend/
-│   ├── server.js
+├── pybackend/
+│   ├── server.py
 │   ├── data/
-│   │   └── seedAssets.js
+│   │   └── seed_assets.py
 │   ├── services/
-│   │   ├── MarketDataService.js
-│   │   ├── PortfolioService.js
-│   │   ├── StrategyService.js
-│   │   └── WebSocketService.js
+│   │   ├── market_data.py
+│   │   ├── portfolio.py
+│   │   ├── strategy.py
+│   │   ├── live_trading.py
+│   │   └── websocket_manager.py
 │   └── utils/
-│       ├── indicators.js
-│       └── logger.js
+│       ├── indicators.py
+│       └── logger.py
 ├── src/
 │   ├── components/
 │   │   ├── AnalyticsPanel.jsx
@@ -80,9 +83,10 @@ crippel-trader/
 │   ├── index.html
 │   └── styles.css
 ├── tests/
-│   ├── test_api.js
-│   ├── test_market.js
-│   └── test_strategy.js
+│   ├── test_api.py
+│   ├── test_market.py
+│   └── test_strategy.py
+├── requirements.txt
 ├── package.json
 ├── webpack.config.js
 ├── .env.example
