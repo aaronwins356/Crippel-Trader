@@ -1,9 +1,12 @@
 @echo off
 setlocal
 
-rem Determine repository root (directory containing this script)
+rem Crippel-Trader launcher for the GitHub repo at https://github.com/CrippelHQ/Crippel-Trader
+rem Determines the repository root (directory containing this script)
 set "REPO_DIR=%~dp0"
 cd /d "%REPO_DIR%"
+
+echo [INFO] Launching Crippel-Trader from %REPO_DIR%
 
 rem Ensure Node dependencies are installed
 if not exist "%REPO_DIR%node_modules" (
@@ -32,11 +35,11 @@ if not defined PYTHON_CMD (
 
 :FOUND_PYTHON
 if not defined PYTHON_CMD (
-    echo [ERROR] No Python interpreter found. Install Python 3.10+ and try again.
+    echo [ERROR] No Python interpreter found. Install Python 3.11+ and try again.
     exit /b 1
 )
 
-rem Optionally ensure Python dependencies are installed
+rem Ensure Python dependencies are installed
 if exist "%REPO_DIR%requirements.txt" (
     echo [INFO] Ensuring Python dependencies are installed...
     "%PYTHON_CMD%" -m pip install -r requirements.txt
@@ -46,10 +49,10 @@ if exist "%REPO_DIR%requirements.txt" (
 )
 
 rem Launch backend server
-start "Crippel Trader Backend" cmd /k "cd /d \"%REPO_DIR%\" ^&^& \"%PYTHON_CMD%\" -m uvicorn pybackend.server:app --reload --host 0.0.0.0 --port 4000"
+start "Crippel-Trader Backend" cmd /k "cd /d \"%REPO_DIR%\" ^&^& \"%PYTHON_CMD%\" -m uvicorn pybackend.server:app --reload --host 0.0.0.0 --port 4000"
 
 rem Launch frontend development server
-start "Crippel Trader Frontend" cmd /k "cd /d \"%REPO_DIR%\" ^&^& npm run dev:frontend"
+start "Crippel-Trader Frontend" cmd /k "cd /d \"%REPO_DIR%\" ^&^& npm run dev:frontend"
 
 echo [INFO] Backend and frontend launch commands issued.
 endlocal

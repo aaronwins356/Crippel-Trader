@@ -1,6 +1,17 @@
-# Crippel Trader v2.0
+# Crippel-Trader
 
-Crippel Trader v2.0 is a full-stack trading simulator that emulates an institutional quant workstation. All market data, analytics, and trades are synthetic and safe for local experimentation.
+Crippel-Trader is a full-stack trading simulator that emulates an institutional quant workstation. All market data, analytics, and trades are synthetic and safe for local experimentation.
+
+## Repository
+
+Clone the latest code straight from the official GitHub repository:
+
+```bash
+git clone https://github.com/CrippelHQ/Crippel-Trader.git
+cd Crippel-Trader
+```
+
+Windows users can launch the full development environment with the bundled [`startTrading.bat`](startTrading.bat) script after cloning. The script installs dependencies on first run and opens both the Python backend and React frontend consoles.
 
 ## Features
 
@@ -111,8 +122,8 @@ crippel-trader/
 
 ## Security & Ethics
 
-Crippel Trader operates entirely on synthetic data. It never connects to live exchanges, stores credentials, or manages real capital. The simulator is intended for educational and research purposes only.
+Crippel-Trader operates entirely on synthetic data. It never connects to live exchanges, stores credentials, or manages real capital. The simulator is intended for educational and research purposes only.
 
 ## License
 
-MIT © 2024 Crippel Trader Contributors
+MIT © 2024 Crippel-Trader Contributors
