@@ -1,114 +1,65 @@
-# Matrix LLM Chat
+# Crippel Trader
 
-A Matrix-themed chat interface for your local LLM running in LM Studio. Experience chatting with AI in a futuristic terminal environment.
+Crippel Trader is a self-contained automated trading laboratory that simulates a multi-asset execution engine and renders a professional, quant-grade analytics surface. The backend produces synthetic yet realistic tick data, drives a systematic strategy, and exposes a WebSocket stream alongside a REST API. The React-based frontend consumes the live feed and visualizes market structure, portfolio risk, and strategy telemetry with a sleek institutional design.
 
-## Features
+## Architecture
 
-- Matrix code rain background animation
-- Terminal-style chat interface with green text on black background
-- Streaming responses from your local LLM with typing animation
-- Fully responsive design
-- Connection status indicator
-- Boot sequence animation
+- **Backend** – Node.js/Express server (`server.js`) backed by a `MarketDataService`. It continuously generates candles for cryptocurrencies, equities, and macro instruments, applies technical indicators, and runs an event-driven strategy through a shared `PortfolioService`. Results are available over:
+  - `GET /api/assets`, `GET /api/analytics`, `GET /api/portfolio`, `GET /api/orders`, and `GET /api/history/:symbol`
+  - `POST /api/orders` for manual overrides
+  - `ws://<host>/ws/stream` for high-frequency updates (market, analytics, portfolio, and strategy log)
+- **Frontend** – React application bundled with Webpack (`src/`). The dashboard showcases:
+  - Real-time price action for the selected asset with indicator telemetry
+  - Leader/laggard dispersion heat map
+  - Portfolio allocation pie, leverage gauges, and momentum vs RSI monitor
+  - Execution blotter and strategy timeline styled for an institutional command center
 
-## Prerequisites
+## Getting Started
 
-1. [LM Studio](https://lmstudio.ai/) installed and running locally
-2. A local LLM model loaded in LM Studio
-3. Node.js (v14 or higher) installed
+```bash
+npm install
+npm run dev
+```
 
-## Setup
+The development script launches the Express server on **http://localhost:4000** and Webpack in watch mode. Visit **http://localhost:3000** to interact with the dashboard (the dev server proxies API and WebSocket requests).
 
-1. Clone or download this repository
+For a production build:
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+```bash
+npm run build
+npm start
+```
 
-3. Ensure LM Studio is running:
-   - Open LM Studio
-   - Load a model
-   - Start the local server (default: http://localhost:1234)
+The `build` command emits static assets to `dist/`. `npm start` serves both the API and the precompiled frontend.
 
-## Usage
+## Manual Trading Overrides
 
-### Development Mode
+Submit manual orders via the REST API using JSON payloads:
 
-1. Start the application in development mode:
-   ```bash
-   npm start
-   ```
-   or on Windows:
-   ```bash
-   start-dev.bat
-   ```
-   or on macOS/Linux:
-   ```bash
-   ./start-dev.sh
-   ```
+```bash
+curl -X POST http://localhost:4000/api/orders \
+  -H "Content-Type: application/json" \
+  -d '{"symbol":"BTC-USD","quantity":2,"price":41000}'
+```
 
-2. Open your browser and navigate to:
-   ```
-   http://localhost:3000
-   ```
+Positive quantity represents a buy, negative quantity a sell. The execution is validated against cash availability and feeds directly into the portfolio state and real-time stream.
 
-### Production Mode
+## Folder Structure
 
-1. Build the application for production:
-   ```bash
-   npm run build
-   ```
-   or on Windows:
-   ```bash
-   build-prod.bat
-   ```
-   or on macOS/Linux:
-   ```bash
-   ./build-prod.sh
-   ```
+```
+backend/
+  data/seedAssets.js         # Instrument universe
+  services/                  # Market generator, portfolio engine, strategy
+  utils/                     # Technical indicator math
+src/
+  components/                # UI building blocks
+  hooks/useTradingStream.js  # WebSocket abstraction
+  utils/format.js            # Formatting helpers
+  App.js                     # Dashboard layout
+  index.js / index.html      # Entry point
+  styles.css                 # Quant aesthetic theme
+```
 
-2. Start the production server:
-   ```bash
-   node server.js
-   ```
-   or on Windows:
-   ```bash
-   start-prod.bat
-   ```
-   or on macOS/Linux:
-   ```bash
-   ./start-prod.sh
-   ```
+## Disclaimer
 
-3. Open your browser and navigate to:
-   ```
-   http://localhost:3000
-   ```
-
-## How It Works
-
-1. The frontend React app displays the Matrix-themed interface
-2. The Node.js/Express backend serves the frontend and proxies requests to LM Studio
-3. Messages are sent to LM Studio's OpenAI-compatible API endpoint
-4. Responses are streamed back token-by-token for a real-time typing effect
-
-## Customization
-
-You can adjust the Matrix rain effect by modifying parameters in `src/MatrixRain.js`:
-- `fontSize`: Size of characters
-- `chars`: Characters used in the rain
-- Animation speed in the `setInterval` call
-
-## Troubleshooting
-
-- If you get connection errors, ensure LM Studio is running on http://localhost:1234
-- If the model doesn't respond, check that a model is loaded in LM Studio
-- For performance issues, reduce the number of raindrops in `MatrixRain.js`
-
-## Technologies Used
-
-- Frontend: React, CSS3
-- Backend: Node.js, Express
-- Animations: Canvas API for Matrix effect
-- Streaming: Fetch API with ReadableStream
+Crippel Trader is a fully synthetic environment designed for demonstration and educational purposes. It **does not** connect to live markets nor execute real trades.

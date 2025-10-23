@@ -1,11 +1,14 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 module.exports = {
   entry: './src/index.js',
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: 'bundle.js',
+    filename: isProduction ? 'assets/js/[name].[contenthash].js' : 'bundle.js',
+    publicPath: '/',
     clean: true
   },
   module: {
@@ -23,20 +26,35 @@ module.exports = {
       {
         test: /\.css$/,
         use: ['style-loader', 'css-loader']
+      },
+      {
+        test: /\.(png|jpg|gif|svg)$/i,
+        type: 'asset/resource'
       }
     ]
   },
-  plugins: [
-    new HtmlWebpackPlugin({
-      template: './src/index.html'
-    })
-  ],
   resolve: {
     extensions: ['.js', '.jsx']
   },
+  plugins: [
+    new HtmlWebpackPlugin({
+      template: './src/index.html',
+      minify: isProduction
+    })
+  ],
   devServer: {
-    contentBase: path.join(__dirname, 'dist'),
+    static: {
+      directory: path.join(__dirname, 'dist')
+    },
     compress: true,
-    port: 3000
+    historyApiFallback: true,
+    port: 3000,
+    proxy: {
+      '/api': 'http://localhost:4000',
+      '/ws': {
+        target: 'http://localhost:4000',
+        ws: true
+      }
+    }
   }
 };

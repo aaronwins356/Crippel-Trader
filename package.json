@@ -1,19 +1,18 @@
 {
-  "name": "matrix-llm-chat",
-  "version": "1.0.0",
-  "description": "Matrix-themed chat interface for local LLM",
+  "name": "crippel-trader",
+  "version": "2.0.0",
+  "description": "Automated trading bot with professional quantitative analytics dashboard",
   "main": "server.js",
   "scripts": {
-    "server": "node server.js",
+    "dev": "concurrently \"NODE_ENV=development node server.js\" \"webpack --mode development --watch\"",
     "build": "webpack --mode production",
-    "start": "concurrently \"npm run server\" \"npm run build\"",
-    "verify": "node scripts/verify-build.js"
+    "start": "NODE_ENV=production node server.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
+    "dayjs": "^1.11.10",
     "express": "^4.18.2",
-    "html-webpack-plugin": "^5.5.0",
-    "http-proxy-middleware": "^2.0.6",
+    "express-ws": "^5.0.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "recharts": "^3.3.0"
@@ -28,7 +27,7 @@
     "style-loader": "^3.3.0",
     "webpack": "^5.88.0",
     "webpack-cli": "^5.1.0",
-    "webpack-dev-middleware": "^6.1.0",
-    "webpack-hot-middleware": "^2.25.4"
+    "webpack-dev-server": "^4.15.0",
+    "html-webpack-plugin": "^5.5.0"
   }
 }
