@@ -1,177 +1,157 @@
-"""FastAPI application exposing the trading simulator services."""
+"""FastAPI application powering the Crippel Trader control panel."""
 
 from __future__ import annotations
 
+import json
 from datetime import datetime
-from typing import Any, Dict
+from pathlib import Path
+from typing import Any, Dict, Literal, Optional
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, status
+from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
 
-from .services import (
-    LiveTradingService,
-    MarketDataService,
-    TradingModeService,
-)
-from .services.websocket_manager import WebSocketManager
-from .utils.logger import get_child
+BASE_DIR = Path(__file__).resolve().parent.parent
+DIST_DIR = BASE_DIR / "dist"
+SETTINGS_FILE = BASE_DIR / "settings.json"
 
-logger = get_child("server")
+BotStatus = Literal["running", "paused", "stopped"]
+TradeFrequency = Literal["low", "medium", "high"]
 
-app = FastAPI(title="Crippel Trader Backend", version="3.0.0")
+
+class SettingsPayload(BaseModel):
+    """Schema describing the tunable bot settings exposed to the UI."""
+
+    risk: float = Field(..., ge=0.0, le=1.0, description="Risk tolerance between 0 and 1")
+    trade_frequency: TradeFrequency
+    max_positions: int = Field(..., ge=1, le=100, description="Maximum simultaneous open positions")
+
+
+class StatusPayload(BaseModel):
+    """Schema used to update the bot lifecycle state."""
+
+    status: BotStatus
+
+
+class SettingsStore:
+    """Simple in-memory settings manager with optional JSON persistence."""
+
+    def __init__(self, *, path: Optional[Path] = None) -> None:
+        self._path = path
+        self._settings = SettingsPayload(risk=0.2, trade_frequency="medium", max_positions=5)
+        self._updated_at = datetime.utcnow()
+        self._status: BotStatus = "stopped"
+        self._status_updated_at = datetime.utcnow()
+        self._load_from_disk()
+
+    # ------------------------------------------------------------------
+    # Persistence helpers
+    # ------------------------------------------------------------------
+    def _load_from_disk(self) -> None:
+        if not self._path or not self._path.exists():
+            return
+        try:
+            payload = json.loads(self._path.read_text())
+            self._settings = SettingsPayload(**payload)
+            self._updated_at = datetime.utcnow()
+        except Exception:  # pragma: no cover - defensive logging
+            # If we cannot load settings we fall back to defaults and keep
+            # operating purely in memory. Errors are intentionally swallowed so
+            # the application can continue to boot.
+            self._settings = SettingsPayload(risk=0.2, trade_frequency="medium", max_positions=5)
+
+    def _write_to_disk(self) -> None:
+        if not self._path:
+            return
+        payload = self._settings.model_dump()
+        self._path.write_text(json.dumps(payload, indent=2))
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+    def get_settings(self) -> Dict[str, Any]:
+        data = self._settings.model_dump()
+        data["updated_at"] = self._updated_at.isoformat()
+        return data
+
+    def update_settings(self, payload: SettingsPayload) -> Dict[str, Any]:
+        self._settings = payload
+        self._updated_at = datetime.utcnow()
+        self._write_to_disk()
+        return self.get_settings()
+
+    def get_status(self) -> Dict[str, Any]:
+        return {
+            "status": self._status,
+            "updated_at": self._status_updated_at.isoformat(),
+        }
+
+    def set_status(self, status: BotStatus) -> Dict[str, Any]:
+        self._status = status
+        self._status_updated_at = datetime.utcnow()
+        return self.get_status()
+
+
+settings_store = SettingsStore(path=SETTINGS_FILE)
+
+api_router = APIRouter(prefix="/api", tags=["control"])
+
+
+@api_router.get("/settings")
+def read_settings() -> Dict[str, Any]:
+    """Return the currently active bot settings."""
+
+    return settings_store.get_settings()
+
+
+@api_router.post("/settings")
+def update_settings(payload: SettingsPayload) -> Dict[str, Any]:
+    """Persist new settings and return the updated snapshot."""
+
+    return settings_store.update_settings(payload)
+
+
+@api_router.get("/status")
+def read_status() -> Dict[str, Any]:
+    """Expose the lifecycle status of the trading bot."""
+
+    return settings_store.get_status()
+
+
+@api_router.post("/status")
+def update_status(request: StatusPayload) -> Dict[str, Any]:
+    """Update the lifecycle status of the trading bot."""
+
+    return settings_store.set_status(request.status)
+
+
+app = FastAPI(title="Crippel Trader Control Server", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(api_router)
 
-market_data_service = MarketDataService()
-live_trading_service = LiveTradingService()
-trading_mode_service = TradingModeService(market_data_service, live_trading_service)
-ws_manager = WebSocketManager()
-
-market_data_service.on("update", ws_manager.dispatch)
-market_data_service.on("trade", lambda trade: ws_manager.dispatch({"type": "strategy:trade", "trade": trade}))
-live_trading_service.on("update", ws_manager.dispatch)
-trading_mode_service.on("mode:change", ws_manager.dispatch)
+static_files: Optional[StaticFiles]
+if DIST_DIR.exists():
+    static_files = StaticFiles(directory=DIST_DIR, html=True)
+    app.mount("/", static_files, name="frontend")
+else:  # pragma: no cover - frontend assets may be absent in CI
+    static_files = None
 
 
-@app.on_event("startup")
-async def startup() -> None:
-    await market_data_service.start()
-    await live_trading_service.start()
+@app.get("/{full_path:path}", include_in_schema=False)
+def spa_fallback(full_path: str) -> FileResponse:
+    """Return index.html for any unmatched path to support client routing."""
+
+    index_path = DIST_DIR / "index.html"
+    if not index_path.exists():
+        raise HTTPException(status_code=404, detail="Frontend has not been built")
+    return FileResponse(index_path)
 
 
-@app.on_event("shutdown")
-async def shutdown() -> None:
-    await market_data_service.stop()
-    await live_trading_service.stop()
-
-
-@app.get("/health")
-async def health() -> Dict[str, Any]:
-    return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
-
-
-@app.get("/api/modes")
-async def get_modes() -> Dict[str, Any]:
-    return {
-        "current": trading_mode_service.get_mode(),
-        "available": trading_mode_service.get_available_modes(),
-    }
-
-
-@app.post("/api/modes")
-async def set_mode(payload: Dict[str, Any]) -> Dict[str, Any]:
-    mode = payload.get("mode")
-    if not mode:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="mode is required")
-    try:
-        updated = trading_mode_service.set_mode(mode)
-    except (ValueError, TypeError) as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return {"mode": updated}
-
-
-def ensure_paper_mode() -> None:
-    if not trading_mode_service.is_paper_mode():
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Endpoint available only in paper trading mode")
-
-
-@app.get("/api/assets")
-async def get_assets() -> Dict[str, Any]:
-    ensure_paper_mode()
-    return {"assets": market_data_service.assets}
-
-
-@app.get("/api/analytics")
-async def get_analytics() -> Dict[str, Any]:
-    ensure_paper_mode()
-    return market_data_service.get_analytics()
-
-
-@app.get("/api/portfolio")
-async def get_portfolio() -> Dict[str, Any]:
-    ensure_paper_mode()
-    return market_data_service.get_portfolio()
-
-
-@app.get("/api/orders")
-async def get_orders() -> Dict[str, Any]:
-    ensure_paper_mode()
-    return {"trades": market_data_service.get_orders()}
-
-
-@app.get("/api/history/{symbol}")
-async def get_history(symbol: str) -> Dict[str, Any]:
-    ensure_paper_mode()
-    return {"symbol": symbol, "candles": market_data_service.get_history(symbol)}
-
-
-@app.get("/api/strategy/log")
-async def get_strategy_log() -> Dict[str, Any]:
-    ensure_paper_mode()
-    return {"log": market_data_service.get_strategy_log()}
-
-
-@app.post("/api/orders", status_code=status.HTTP_201_CREATED)
-async def post_order(payload: Dict[str, Any]) -> Dict[str, Any]:
-    ensure_paper_mode()
-    try:
-        trade = market_data_service.place_order(payload)
-    except (ValueError, TypeError) as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return trade
-
-
-@app.get("/api/live/state")
-async def get_live_state() -> Dict[str, Any]:
-    return {"mode": trading_mode_service.get_mode(), "state": live_trading_service.get_state()}
-
-
-@app.post("/api/live/trades", status_code=status.HTTP_201_CREATED)
-async def post_live_trade(payload: Dict[str, Any]) -> Dict[str, Any]:
-    if not trading_mode_service.is_live_mode():
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Live trading mode must be active to submit trades")
-    try:
-        trade = await live_trading_service.submit_worker_trade(payload)
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return trade
-
-
-@app.post("/api/live/research", status_code=status.HTTP_201_CREATED)
-async def post_live_research(payload: Dict[str, Any]) -> Dict[str, Any]:
-    if not trading_mode_service.is_live_mode():
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Live trading mode must be active to submit research")
-    return live_trading_service.add_research_insight(payload)
-
-
-@app.websocket("/ws/stream")
-async def websocket_stream(websocket: WebSocket) -> None:
-    await ws_manager.connect(websocket)
-    try:
-        await websocket.send_json({"type": "mode:change", "mode": trading_mode_service.get_mode()})
-        if trading_mode_service.is_live_mode():
-            await websocket.send_json({"type": "live:update", "state": live_trading_service.get_state()})
-        else:
-            await websocket.send_json(
-                {
-                    "type": "market:update",
-                    "market": market_data_service.assets,
-                    "analytics": market_data_service.get_analytics(),
-                    "portfolio": market_data_service.get_portfolio(),
-                    "strategy": {"log": market_data_service.get_strategy_log()},
-                }
-            )
-        while True:
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        await ws_manager.disconnect(websocket)
-    except Exception as exc:  # pragma: no cover - defensive logging
-        logger.exception("WebSocket connection error", exc_info=exc)
-        await ws_manager.disconnect(websocket)
-
-
-__all__ = ["app", "market_data_service", "live_trading_service", "trading_mode_service", "ws_manager"]
+__all__ = ["app", "settings_store", "SettingsPayload"]
