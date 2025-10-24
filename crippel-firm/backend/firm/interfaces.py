@@ -1,44 +1,58 @@
-"""Protocol definitions for the firm."""
+"""Protocol definitions for firm components."""
 from __future__ import annotations
 
 import asyncio
 from typing import Any, Protocol, runtime_checkable
 
+MetricDict = dict[str, float]
+
 
 @runtime_checkable
 class EventBusProtocol(Protocol):
-    """Protocol for event bus implementation."""
+    """Protocol describing the event bus interface."""
 
-    async def publish(self, topic: str, payload: dict[str, Any]) -> None: ...
+    async def subscribe(self, topic: str) -> asyncio.Queue[Any]:
+        ...
 
-    async def subscribe(self, topic: str) -> asyncio.Queue[dict[str, Any]]: ...
+    async def unsubscribe(self, topic: str, queue: asyncio.Queue[Any]) -> None:
+        ...
 
-    async def unsubscribe(self, topic: str, queue: asyncio.Queue[dict[str, Any]]) -> None: ...
+    async def publish(self, topic: str, payload: Any) -> None:
+        ...
+
+    def stats(self) -> dict[str, Any]:
+        ...
 
 
 @runtime_checkable
 class BotProtocol(Protocol):
-    """Protocol for worker bots."""
+    """Protocol implemented by worker bots."""
 
     bot_id: str
     bot_type: str
     last_active: float
 
-    async def on_start(self) -> None: ...
+    async def start(self) -> None:
+        ...
 
-    async def on_tick(self) -> None: ...
+    async def stop(self) -> None:
+        ...
 
-    async def on_evaluate(self) -> dict[str, float]: ...
+    async def on_tick(self) -> None:
+        ...
 
-    async def on_terminate(self) -> None: ...
+    async def on_evaluate(self) -> MetricDict:
+        ...
 
 
-@runtime_checkable
 class PerformanceModel(Protocol):
-    """Protocol for bot performance snapshots."""
+    """Protocol for performance tracking stores."""
 
-    def record_event(self, bot_id: str, metric: str, value: float) -> None: ...
+    def record(self, bot_id: str, metric: str, value: float) -> None:
+        ...
 
-    def get_bot_summary(self, bot_id: str) -> dict[str, float]: ...
+    def fetch(self, bot_id: str) -> dict[str, float]:
+        ...
 
-    def all_summaries(self) -> dict[str, dict[str, float]]: ...
+    def summary(self) -> dict[str, dict[str, float]]:
+        ...
