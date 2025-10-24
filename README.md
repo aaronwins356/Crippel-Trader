@@ -1,24 +1,46 @@
-# Crippel Trader
+# Croc-Bot Monorepo
 
-Crippel Trader is a deterministic crypto trading stack that supports paper and live execution, market prediction, and a live dashboard. It is designed for a single operator (Aaron) with a focus on safety, reproducibility, and fast tick-to-signal performance.
+Croc-Bot is a mono-repository that bundles the **Crippel Trader** execution stack and the
+**Crippel-Firm** research and simulation environment. The two projects share a design
+goal of deterministic, auditable automation for crypto markets, but they target
+different workflows:
 
-## Safety First
+- **Crippel Trader** – a production-ready trading engine with live and paper execution,
+  a FastAPI backend, and a Next.js dashboard.
+- **Crippel-Firm** – an autonomous trading organization simulator that coordinates a
+  manager brain with specialized worker bots for research, analysis, and execution.
 
-> **LIVE trading routes orders directly to Kraken. Double-check credentials and confirm mode switches manually.**
->
-> The repository deliberately ships without any compiled assets or binaries. All files are human-readable text, and any required logos or build artefacts are represented as inline placeholders.
+This document consolidates the documentation that previously lived in the individual
+project READMEs so that you have a single place to understand, build, and run every
+component.
 
-## Features
+## Repository Layout
 
-- FastAPI backend with asynchronous tasks for market ingestion, strategy evaluation, execution, and broadcasting.
-- Paper simulator with configurable maker/taker fees and risk checks (per-trade cap, per-symbol exposure, drawdown kill switch).
-- Kraken adapter (WebSocket + REST scaffold) plus a stub adapter for future stock integrations.
-- Rolling EMA slope estimator feeding a momentum strategy (MACD-style) with deterministic aggression tuning.
-- React/Next.js dashboard showing live KPIs, equity chart, and recent trades with paper/live mode toggle and aggression slider.
-- SQLite persistence for fills and aggression changes.
-- Structured logging via `structlog`, strict typing, and comprehensive unit tests.
+```
+Croc-Bot/
+├── crippel-trader/           # Trading engine (backend + dashboard)
+│   ├── backend/              # FastAPI app, runtime, services, tests
+│   ├── frontend/             # Next.js dashboard
+│   ├── requirements.txt      # Backend dependencies
+│   └── pyproject.toml        # Packaging configuration
+├── crippel-firm/             # Autonomous firm simulator
+│   ├── backend/              # Manager brain, bots, API, tests
+│   ├── requirements.txt      # Simulation dependencies
+│   └── pyproject.toml        # Packaging configuration
+└── README.md                 # (This file) unified documentation
+```
 
-## Architecture Overview
+Each sub-project ships its own virtual environment/dependency metadata. Licenses are
+kept alongside the projects (`crippel-trader/LICENSE` and `crippel-firm/LICENSE`).
+
+## Crippel Trader
+
+### Overview
+
+Crippel Trader is a deterministic crypto trading stack that supports paper and live
+execution, market prediction, and a live dashboard. It is designed for a single
+operator with a focus on safety, reproducibility, and fast tick-to-signal
+performance.
 
 ```
 +-----------------------------+        +---------------------------+
@@ -44,84 +66,110 @@ Crippel Trader is a deterministic crypto trading stack that supports paper and l
                     +--------------------+                  +---------------------------+
 ```
 
-## Aggression Mapping
+### Key Features
 
-| Level | Position Fraction | Order Type | Stop Distance | Take Profit | Hold (s) | Cooldown (s) | Signal Threshold |
-|-------|------------------:|------------|---------------|-------------|----------|--------------|------------------|
-| 1     | 5%                | Limit      | 1.0%          | 0.3%        | 60       | 2            | 0.60             |
-| 5     | ~23%              | Limit      | ~0.6%         | ~1.1%       | ~38      | ~13          | ~0.42            |
-| 10    | 40%               | Market     | 0.2%          | 2.0%        | 5        | 30           | 0.20             |
+- FastAPI backend with asynchronous tasks for market ingestion, strategy evaluation,
+  execution, and broadcasting.
+- Paper simulator with configurable maker/taker fees and risk checks (per-trade cap,
+  per-symbol exposure, drawdown kill switch).
+- Kraken adapter (WebSocket + REST scaffold) plus a stub adapter for future stock
+  integrations.
+- Rolling EMA slope estimator feeding a momentum strategy (MACD-style) with
+  deterministic aggression tuning.
+- React/Next.js dashboard showing live KPIs, equity chart, and recent trades with
+  paper/live mode toggle and aggression slider.
+- SQLite persistence for fills and aggression changes.
+- Structured logging via `structlog`, strict typing, and comprehensive unit tests.
 
-Use the slider in the dashboard or `POST /api/settings/aggression?aggression=N` to adjust. Parameters are deterministic for reproducibility.
-
-## Getting Started
-
-### Backend
+### Getting Started (Backend)
 
 ```bash
-cd backend
+cd crippel-trader/backend
 python -m venv .venv
 source .venv/bin/activate
 pip install -r ../requirements.txt
 uvicorn main:app --reload
 ```
 
-### Frontend
+Set `BACKEND_URL` in the frontend environment if the dashboard should talk to a remote
+backend (defaults to `http://localhost:8000`).
+
+### Getting Started (Frontend)
 
 ```bash
-cd frontend
+cd crippel-trader/frontend
 npm install
 npm run dev
 ```
 
-Set `BACKEND_URL` to point the dashboard to the backend host (defaults to `http://localhost:8000`).
+### Operations & Quality Gates
 
-### Combined Smoke Test
+- `make dev` (from `crippel-trader`) runs the backend and builds the frontend to perform
+  a quick smoke test.
+- Run the automated checks from the backend directory:
+  ```bash
+  cd crippel-trader/backend
+  pytest -q
+  mypy crippel
+  ruff check crippel
+  ```
 
-The root `Makefile` ships with a helper to run both sides sequentially:
+## Crippel-Firm
+
+### Overview
+
+Crippel-Firm is an experimental autonomous trading organization composed of a manager
+bot and a set of specialized worker bots. The manager hires, evaluates, and, when
+needed, terminates worker bots based on performance and firm health. The provided
+implementation focuses on deterministic simulation suitable for unit testing and offline
+experimentation. Real trading integrations are abstracted behind adapters for
+swap-in production implementations.
+
+### Key Features
+
+- Manager brain that tracks firm performance, hires/fires workers, and reallocates
+  virtual capital.
+- Event-driven architecture using an asyncio-based event bus.
+- Worker bot implementations for research, analysis, trading, and risk management.
+- Paper trading simulator and Kraken adapter stub for integration testing.
+- FastAPI service exposing REST and WebSocket endpoints for monitoring and control.
+- Test suite covering manager decisions, worker lifecycles, and research ingestion.
+
+### Getting Started
 
 ```bash
-make dev
+cd crippel-firm
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python -m backend.main
 ```
 
-This invokes `scripts/smoke.py`, which spins up the backend briefly and ensures the frontend can build.
+The default configuration runs the firm in simulation mode and periodically evaluates
+bot performance. Launch the optional API to reach REST endpoints at `http://127.0.0.1:8000`.
 
-## API Surface
+### Tests
 
-- `GET /api/assets` — active symbols and descriptions.
-- `GET /api/history/{symbol}` — recent price ticks retained in memory.
-- `GET /api/orders` — _reserved for future use_.
-- `GET /api/settings` — current mode and aggression parameters.
-- `POST /api/mode` — toggle paper/live mode (live requires `{ "confirm": true }`).
-- `POST /api/settings/aggression?aggression=N` — update aggression level.
-- `GET /api/stats` — aggregate KPIs (PnL, win rate, fees, trades, cash, equity).
-- WebSocket `/ws/stream` — streams `trade`, `portfolio:update`, and `stats:update` messages with bounded queues.
-
-## Prediction & Strategy
-
-The default strategy uses a rolling EMA slope estimator to gauge short-term momentum. Signals above/below a deterministic threshold map to LONG/SHORT actions. MACD-style components are provided under `engine/strategies/macd_rsi.py` for experimentation.
-
-## Extending to Stocks
-
-A stub `StocksAdapter` is included under `backend/crippel/adapters/stocks_stub.py`. Implement its `connect_market_data`, `submit_order`, and `close` methods to onboard a stock broker. Risk checks and runtime wiring already expect an `ExchangeAdapter` implementation, so the integration is isolated to the adapter.
-
-## Testing & Quality
+From the `crippel-firm` directory run:
 
 ```bash
-cd backend
-pytest -q
-mypy crippel
-ruff check crippel
+pytest
+pytest-asyncio
+pytest-cov
 ```
 
-PyTest is configured with coverage reporting, and strict MyPy settings keep the codebase typed.
+(Additional mocks use `respx`.)
 
-## Configuration & Secrets
+## Working Across Projects
 
-- Copy `.env.example` to `.env` and populate Kraken API credentials for live trading.
-- Settings are powered by `pydantic-settings` (`CRIPPEL_*` environment variables).
-- All randomness is seeded for deterministic paper simulation runs.
+- Use isolated virtual environments per project; their Python requirements differ
+  (`crippel-trader` targets Python 3.11 while `crippel-firm` targets Python 3.10+).
+- Configuration for live trading is stored in environment variables; see the
+  backend `.env.example` files where applicable.
+- Both projects rely on FastAPI, so shared operational knowledge (uvicorn, dependency
+  injection patterns, async services) transfers between them.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+Both `crippel-trader` and `crippel-firm` are distributed under the MIT license. Refer to
+the license files in each project directory for details.
