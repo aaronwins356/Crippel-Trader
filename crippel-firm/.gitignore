@@ -8,3 +8,7 @@ __pycache__/
 *.log
 coverage/
 htmlcov/
+.next/
+node_modules/
+dist/
+build/
