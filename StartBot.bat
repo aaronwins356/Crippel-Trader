@@ -54,17 +54,30 @@ REM Start the backend in a new window
 start "🐊 Croc-Bot Backend" cmd /k "echo 🔧 Backend Server Starting... && python start_croc_bot.py"
 
 echo ⏳ Waiting for backend to initialize...
+timeout /t 3 /nobreak >nul
+
+echo 🤖 Starting Real Trading Engine...
+echo    - Live market data from Kraken
+echo    - Real capital management
+echo    - Professional risk controls
+echo    - Bid/ask spread handling
+echo.
+
+REM Start the real trading system in a new window
+start "🐊 Real Trading Engine" cmd /k "echo 💰 Real Trading Engine Starting... && python start_real_trading.py"
+
+echo ⏳ Waiting for backend to initialize...
 timeout /t 5 /nobreak >nul
 
-echo 📊 Starting Trading Dashboard...
-echo    - Real-time portfolio tracking
-echo    - Strategy performance monitoring
-echo    - Risk management controls
-echo    - Live market data
+echo 📊 Starting Real Trading Dashboard...
+echo    - Live portfolio monitoring with REAL money
+echo    - Real-time market data (bid/ask/spreads)
+echo    - Professional risk management
+echo    - Manual trading interface
 echo.
 
 REM Start the dashboard in a new window
-start "🐊 Croc-Bot Dashboard" cmd /k "echo 📊 Dashboard Starting... && python simple_dashboard.py"
+start "🐊 Real Trading Dashboard" cmd /k "echo 📊 Real Trading Dashboard Starting... && streamlit run real_trading_dashboard.py --server.port 12000 --server.address 0.0.0.0 --server.allowRunOnSave true"
 
 echo ⏳ Waiting for dashboard to load...
 timeout /t 3 /nobreak >nul
@@ -78,12 +91,12 @@ echo 🔧 API Backend: http://localhost:8000
 echo.
 echo 💡 What's Running:
 echo    ✅ Backend API with Kraken integration
-echo    ✅ Paper trading engine ($200 starting capital)
+echo    ✅ Paper trading engine ($1000 starting capital)
 echo    ✅ Real-time market data streaming
 echo    ✅ 10 advanced trading strategies
 echo    ✅ Risk management system
 echo    ✅ Discord notifications
-echo    ✅ Professional trading dashboard
+echo    ✅ Real trading dashboard with live money
 echo.
 echo 🌐 Open your browser to: http://localhost:12000
 echo.

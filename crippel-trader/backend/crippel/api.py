@@ -12,6 +12,8 @@ from .config import get_settings
 from .models.enums import Mode
 from .models.core import OrderSide, OrderType
 from .runtime import EngineRuntime
+from .enhanced_trading_system import EnhancedTradingSystem, TradingSystemConfig
+from .real_trading_engine import RealTradingEngine
 
 router = APIRouter(prefix="/api")
 
@@ -526,3 +528,265 @@ async def health_check() -> JSONResponse:
         "timestamp": datetime.utcnow().isoformat(),
         "version": "1.0.0"
     })
+
+
+# Real Trading System Endpoints
+class RealTradingRequest(BaseModel):
+    symbol: str
+    side: str  # "BUY" or "SELL"
+    size: float
+    order_type: str = "LIMIT"  # "LIMIT" or "MARKET"
+    price: Optional[float] = None
+
+
+class RealTradingConfig(BaseModel):
+    initial_capital: float = 1000.0
+    risk_aggression: int = 5
+    max_positions: int = 5
+    enable_real_trading: bool = True
+
+
+# Global real trading system instance
+_real_trading_system: Optional[EnhancedTradingSystem] = None
+
+
+@router.post("/real-trading/start")
+async def start_real_trading(config: RealTradingConfig) -> JSONResponse:
+    """Start the real trading system with live market data."""
+    global _real_trading_system
+    
+    if _real_trading_system and _real_trading_system.is_running:
+        raise HTTPException(status_code=400, detail="Real trading system already running")
+    
+    try:
+        # Create trading system configuration
+        trading_config = TradingSystemConfig(
+            initial_capital=config.initial_capital,
+            max_positions=config.max_positions,
+            enable_real_trading=config.enable_real_trading,
+            risk_aggression=config.risk_aggression
+        )
+        
+        # Initialize trading system
+        _real_trading_system = EnhancedTradingSystem(trading_config)
+        
+        # Default symbols for real trading
+        symbols = [
+            "BTC/USD", "ETH/USD", "ADA/USD", "SOL/USD",  # Crypto
+            "TSLA", "AAPL", "GOOGL", "MSFT", "NVDA", "SPY"  # Stocks
+        ]
+        
+        # Start the system (non-blocking)
+        import asyncio
+        asyncio.create_task(_real_trading_system.start(symbols))
+        
+        return JSONResponse({
+            "status": "started",
+            "message": "Real trading system started successfully",
+            "config": {
+                "initial_capital": config.initial_capital,
+                "risk_aggression": config.risk_aggression,
+                "symbols": symbols,
+                "real_trading": config.enable_real_trading
+            },
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to start real trading: {str(e)}")
+
+
+@router.post("/real-trading/stop")
+async def stop_real_trading() -> JSONResponse:
+    """Stop the real trading system."""
+    global _real_trading_system
+    
+    if not _real_trading_system or not _real_trading_system.is_running:
+        raise HTTPException(status_code=400, detail="Real trading system not running")
+    
+    try:
+        await _real_trading_system.stop()
+        
+        return JSONResponse({
+            "status": "stopped",
+            "message": "Real trading system stopped successfully",
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to stop real trading: {str(e)}")
+
+
+@router.get("/real-trading/status")
+async def get_real_trading_status() -> JSONResponse:
+    """Get current status of the real trading system."""
+    global _real_trading_system
+    
+    if not _real_trading_system:
+        return JSONResponse({
+            "status": "not_initialized",
+            "message": "Real trading system not initialized",
+            "timestamp": datetime.utcnow().isoformat()
+        })
+    
+    try:
+        status = _real_trading_system.get_system_status()
+        return JSONResponse(status)
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get status: {str(e)}")
+
+
+@router.get("/real-trading/portfolio")
+async def get_real_portfolio() -> JSONResponse:
+    """Get current real trading portfolio state."""
+    global _real_trading_system
+    
+    if not _real_trading_system:
+        raise HTTPException(status_code=400, detail="Real trading system not initialized")
+    
+    try:
+        portfolio_state = _real_trading_system.trading_engine.get_portfolio_state()
+        
+        return JSONResponse({
+            "cash": portfolio_state.cash,
+            "equity": portfolio_state.equity,
+            "daily_pnl": portfolio_state.daily_pnl,
+            "total_pnl": portfolio_state.total_pnl,
+            "max_drawdown": portfolio_state.max_drawdown,
+            "positions": [
+                {
+                    "symbol": pos.symbol,
+                    "size": pos.size,
+                    "avg_price": pos.avg_price,
+                    "unrealized_pnl": pos.unrealized_pnl,
+                    "realized_pnl": pos.realized_pnl
+                }
+                for pos in portfolio_state.positions if pos.size != 0
+            ],
+            "open_orders": [
+                {
+                    "id": order.id,
+                    "symbol": order.symbol,
+                    "side": order.side.value,
+                    "type": order.type.value,
+                    "size": order.size,
+                    "price": order.price,
+                    "timestamp": order.ts.isoformat()
+                }
+                for order in portfolio_state.open_orders
+            ],
+            "stats": {
+                "total_trades": portfolio_state.stats.total_trades,
+                "winning_trades": portfolio_state.stats.winning_trades,
+                "losing_trades": portfolio_state.stats.losing_trades,
+                "fees_paid": portfolio_state.stats.fees_paid,
+                "win_rate": (portfolio_state.stats.winning_trades / max(portfolio_state.stats.total_trades, 1)) * 100
+            },
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get portfolio: {str(e)}")
+
+
+@router.post("/real-trading/manual-trade")
+async def execute_manual_trade(trade_request: RealTradingRequest) -> JSONResponse:
+    """Execute a manual trade with full validation."""
+    global _real_trading_system
+    
+    if not _real_trading_system or not _real_trading_system.is_running:
+        raise HTTPException(status_code=400, detail="Real trading system not running")
+    
+    try:
+        success = await _real_trading_system.manual_trade(
+            symbol=trade_request.symbol,
+            side=trade_request.side,
+            size=trade_request.size,
+            order_type=trade_request.order_type,
+            price=trade_request.price
+        )
+        
+        if success:
+            return JSONResponse({
+                "status": "success",
+                "message": f"Manual trade executed: {trade_request.side} {trade_request.size} {trade_request.symbol}",
+                "trade": {
+                    "symbol": trade_request.symbol,
+                    "side": trade_request.side,
+                    "size": trade_request.size,
+                    "type": trade_request.order_type,
+                    "price": trade_request.price
+                },
+                "timestamp": datetime.utcnow().isoformat()
+            })
+        else:
+            raise HTTPException(status_code=400, detail="Trade validation failed")
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to execute trade: {str(e)}")
+
+
+@router.get("/real-trading/market-data/{symbol}")
+async def get_real_market_data(symbol: str) -> JSONResponse:
+    """Get current real market data for a symbol."""
+    global _real_trading_system
+    
+    if not _real_trading_system:
+        raise HTTPException(status_code=400, detail="Real trading system not initialized")
+    
+    try:
+        if symbol not in _real_trading_system.trading_engine.current_prices:
+            raise HTTPException(status_code=404, detail=f"No market data for {symbol}")
+        
+        tick = _real_trading_system.trading_engine.current_prices[symbol]
+        
+        return JSONResponse({
+            "symbol": tick.symbol,
+            "price": tick.price,
+            "bid": tick.bid,
+            "ask": tick.ask,
+            "spread": tick.spread,
+            "volume": tick.volume,
+            "timestamp": tick.ts.isoformat(),
+            "market_open": _real_trading_system.trading_engine.is_market_open(symbol)
+        })
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get market data: {str(e)}")
+
+
+@router.get("/real-trading/risk-metrics")
+async def get_risk_metrics() -> JSONResponse:
+    """Get current risk metrics and limits."""
+    global _real_trading_system
+    
+    if not _real_trading_system:
+        raise HTTPException(status_code=400, detail="Real trading system not initialized")
+    
+    try:
+        engine = _real_trading_system.trading_engine
+        current_equity = engine.get_current_equity()
+        
+        return JSONResponse({
+            "current_equity": current_equity,
+            "available_cash": engine.get_available_cash(),
+            "total_exposure": engine.get_total_exposure(),
+            "max_position_size_usd": current_equity * engine.max_position_size_pct,
+            "max_total_exposure_usd": current_equity * engine.max_total_exposure_pct,
+            "cash_reserve_usd": current_equity * engine.min_cash_reserve_pct,
+            "daily_pnl": engine.daily_pnl,
+            "max_drawdown": engine.max_drawdown,
+            "risk_limits": {
+                "max_position_size_pct": engine.max_position_size_pct * 100,
+                "max_total_exposure_pct": engine.max_total_exposure_pct * 100,
+                "min_cash_reserve_pct": engine.min_cash_reserve_pct * 100,
+                "max_daily_loss_pct": engine.max_daily_loss_pct * 100
+            },
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get risk metrics: {str(e)}")
