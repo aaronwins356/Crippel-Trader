@@ -16,6 +16,22 @@ class PriceTick(BaseModel):
     price: float = Field(ge=0)
     volume: float = Field(ge=0)
     ts: datetime
+    bid: float = Field(default=0.0, ge=0)
+    ask: float = Field(default=0.0, ge=0)
+    
+    @property
+    def spread(self) -> float:
+        """Calculate bid-ask spread."""
+        if self.bid > 0 and self.ask > 0:
+            return self.ask - self.bid
+        return 0.0
+    
+    @property
+    def mid_price(self) -> float:
+        """Calculate mid price between bid and ask."""
+        if self.bid > 0 and self.ask > 0:
+            return (self.bid + self.ask) / 2
+        return self.price
 
 
 class Signal(BaseModel):
