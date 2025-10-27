@@ -1,1 +1,0 @@
-"""Crippel-Firm backend package."""
