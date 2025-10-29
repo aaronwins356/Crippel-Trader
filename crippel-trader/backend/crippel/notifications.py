@@ -57,9 +57,14 @@ class NotificationService:
         self._min_interval: float = 0.5  # Minimum 0.5s between notifications
         self._startup_mode: bool = True  # Debounce more aggressively during startup
         self._startup_messages: list[str] = []  # Collect startup messages
-        
-        # Start background notification processor
-        self._notification_task = asyncio.create_task(self._process_notification_queue())
+        self._started: bool = False
+    
+    async def start(self) -> None:
+        """Start the background notification processor (call from async context)."""
+        if not self._started:
+            self._notification_task = asyncio.create_task(self._process_notification_queue())
+            self._started = True
+            logger.info("Notification service started")
         
     async def send_notification(
         self, 
