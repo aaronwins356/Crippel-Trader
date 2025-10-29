@@ -15,37 +15,42 @@ Croc-Bot is a production-minded, AI-assisted trading platform that lets you rese
 - 🧾 **Config-Driven Everything** – Fine-tune behavior through a single `config.json`, version-controlled alongside your strategies.
 
 ## 🛠️ Quick Start
-### 1️⃣ Clone & Install
-```bash
-git clone https://github.com/aaronwins356/Croc-Bot.git
-cd Croc-Bot
-python -m venv .venv
-source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
-python -m pip install -r requirements.txt
-```
+### ⚡ Fast Launch Checklist
+1. **Clone & install dependencies**
+   ```bash
+   git clone https://github.com/aaronwins356/Croc-Bot.git
+   cd Croc-Bot
+   python -m venv .venv
+   source .venv/bin/activate  # Windows: .venv\Scripts\activate
+   python -m pip install -r requirements.txt
+   ```
 
-### 2️⃣ Configure the Bot
-Edit `config.json` with your favourite editor (VS Code, vim, nano, etc.). See the [🧭 Config Reference](#-config-reference) for field-level guidance.
-```bash
-cp config.json config.local.json  # optional safety copy
-nano config.json
-```
+2. **Copy & edit the config** (keep secrets out of version control).
+   ```bash
+   cp config.json config.local.json  # optional backup template
+   nano config.json                  # or code/vim/notepad
+   ```
+   - Set `trading.mode` to `"paper"` while rehearsing.
+   - Add Kraken API keys **only** when ready for live trading.
 
-### 3️⃣ Run the Bot Engine
-Fire up your preferred runtime:
-- 🧪 Paper testing: `python start_croc_bot.py`
-- 💼 Live execution (after rehearsals): `python start_real_trading.py`
+3. **Start the engine** (choose one runtime per terminal session).
+   ```bash
+   # paper trading simulator
+   python start_croc_bot.py
 
-### 4️⃣ Launch the Trading UI
-Open `trading_dashboard.html` directly in your browser:
-- 📂 macOS/Linux: `open trading_dashboard.html`
-- 🪟 Windows: `start trading_dashboard.html`
-- 🧪 Or simply drag-and-drop the file into any modern browser.
+   # live trading – requires funded Kraken account + API keys
+   python start_real_trading.py
+   ```
 
-### 5️⃣ Chat with the AI Co-Pilot
-1. Launch LM Studio (or your preferred local server) and load a Qwen3-compatible model.
-2. Update `llm.endpoint` and `llm.model` in `config.json` to match the server.
-3. Use the "AI Assistant" panel in the dashboard to request code reviews, generate new strategies, or draft risk reports. Ask it to improve specific files (e.g., `bot/strategy.py`) or tighten risk constraints—it can propose diffs you can apply manually.
+4. **Open the dashboard** (no web server required).
+   - macOS/Linux: `open trading_dashboard.html`
+   - Windows: `start trading_dashboard.html`
+   - Any OS: drag the file into a modern browser.
+
+5. **Wire up the AI co-pilot** (optional but recommended).
+   - Launch LM Studio or another OpenAI-compatible local endpoint.
+   - Align `llm.endpoint` and `llm.model` values in `config.json`.
+   - Use the “AI Assistant” panel in the dashboard to review or draft strategies.
 
 ## 🧭 Config Reference
 `config.json` keeps Croc-Bot deterministic and reproducible. Each top-level key controls a focused part of the runtime:
