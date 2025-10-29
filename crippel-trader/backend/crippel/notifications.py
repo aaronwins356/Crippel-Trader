@@ -66,20 +66,70 @@ class NotificationService:
         title: str, 
         message: str, 
         color: int = 0x00ff00,  # Green by default
-        fields: Optional[list[Dict[str, Any]]] = None
+        fields: Optional[list[Dict[str, Any]]] = None,
+        priority: bool = False  # High priority notifications bypass queue
     ) -> bool:
-        """Send a notification to Discord."""
+        """Queue a notification to Discord with rate-limit handling.
+        
+        Args:
+            title: Notification title
+            message: Notification message
+            color: Embed color (default green)
+            fields: Optional embed fields
+            priority: If True, send immediately bypassing queue
+        
+        Returns:
+            True if queued/sent successfully, False otherwise
+        """
         if not self.settings.discord_notifications_enabled:
             logger.info("Discord notifications disabled", title=title)
             return True
-            
+        
+        # Collect startup messages for later summarization
+        if self._startup_mode and "Strategy" in title and "created" in message.lower():
+            self._startup_messages.append(f"• {title}")
+            return True
+        
+        # Queue the notification
+        item = NotificationQueueItem(
+            title=title,
+            message=message,
+            color=color,
+            fields=fields or []
+        )
+        
+        if priority:
+            # Send immediately for high-priority notifications
+            return await self._send_notification_now(item)
+        else:
+            # Queue for batch processing
+            self._pending_notifications.append(item)
+            return True
+    
+    async def _send_notification_now(self, item: NotificationQueueItem) -> bool:
+        """Actually send a notification to Discord webhook.
+        
+        Handles HTTP 429 rate limits with exponential backoff.
+        """
+        # Wait if we're currently rate limited
+        current_time = time.time()
+        if current_time < self._rate_limited_until:
+            wait_time = self._rate_limited_until - current_time
+            logger.warning("Rate limited, waiting", wait_seconds=wait_time)
+            await asyncio.sleep(wait_time)
+        
+        # Respect minimum interval between notifications
+        time_since_last = current_time - self._last_notification_time
+        if time_since_last < self._min_interval:
+            await asyncio.sleep(self._min_interval - time_since_last)
+        
         try:
             embed = DiscordEmbed(
-                title=title,
-                description=message,
-                color=color,
+                title=item.title,
+                description=item.message,
+                color=item.color,
                 timestamp=datetime.utcnow().isoformat(),
-                fields=fields or [],
+                fields=item.fields,
                 footer={"text": "Croc-Bot Trading System"}
             )
             
@@ -91,21 +141,76 @@ class NotificationService:
                 headers={"Content-Type": "application/json"}
             )
             
+            self._last_notification_time = time.time()
+            
             if response.status_code == 204:
-                logger.info("Discord notification sent successfully", title=title)
+                logger.info("Discord notification sent successfully", title=item.title)
                 return True
+            elif response.status_code == 429:
+                # Rate limited - extract retry_after
+                retry_after = response.headers.get("Retry-After")
+                if retry_after:
+                    try:
+                        wait_seconds = float(retry_after)
+                    except ValueError:
+                        wait_seconds = 5.0
+                else:
+                    wait_seconds = 5.0
+                
+                self._rate_limited_until = time.time() + wait_seconds
+                logger.warning(
+                    "Discord rate limit hit, backing off",
+                    retry_after_seconds=wait_seconds,
+                    title=item.title
+                )
+                
+                # Re-queue the notification
+                self._pending_notifications.appendleft(item)
+                return False
             else:
                 logger.error(
                     "Failed to send Discord notification",
-                    title=title,
+                    title=item.title,
                     status_code=response.status_code,
                     response=response.text
                 )
                 return False
                 
         except Exception as e:
-            logger.error("Error sending Discord notification", title=title, error=str(e))
+            logger.error("Error sending Discord notification", title=item.title, error=str(e))
             return False
+    
+    async def _process_notification_queue(self) -> None:
+        """Background task to process queued notifications."""
+        while True:
+            try:
+                await asyncio.sleep(0.5)  # Process every 0.5 seconds
+                
+                if self._pending_notifications:
+                    # Get next notification
+                    item = self._pending_notifications.popleft()
+                    await self._send_notification_now(item)
+                    
+            except asyncio.CancelledError:
+                logger.info("Notification queue processor cancelled")
+                break
+            except Exception as e:
+                logger.error("Error in notification queue processor", error=str(e))
+                await asyncio.sleep(1.0)
+    
+    async def flush_startup_messages(self) -> None:
+        """Flush collected startup messages as a single summary."""
+        if self._startup_messages:
+            summary = "\n".join(self._startup_messages)
+            await self.send_notification(
+                title="🚀 System Startup Complete",
+                message=f"Initialized with {len(self._startup_messages)} strategies:\n{summary}",
+                color=0x0099ff,  # Blue
+                priority=True
+            )
+            self._startup_messages.clear()
+        
+        self._startup_mode = False
     
     async def send_trade_alert(
         self,
