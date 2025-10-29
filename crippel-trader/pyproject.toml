@@ -24,6 +24,9 @@ dependencies = [
   "structlog>=24.1",
 ]
 
+[project.scripts]
+croc-refactor = "crippel.ai.refactor_tool:main"
+
 [project.optional-dependencies]
 dashboard = [
   "streamlit>=1.33",
