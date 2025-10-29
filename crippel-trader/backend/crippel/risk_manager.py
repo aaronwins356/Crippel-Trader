@@ -495,6 +495,7 @@ class RiskManager:
                 "current_aggression": self.current_aggression,
                 "risk_limits": self.risk_limits,
                 "active_alerts": len(self.active_alerts),
+                "critical_alerts": len([a for a in self.active_alerts if a.level == RiskLevel.CRITICAL]),
                 "metrics": None
             }
         
