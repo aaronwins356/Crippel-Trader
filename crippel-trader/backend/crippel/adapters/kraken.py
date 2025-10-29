@@ -25,33 +25,40 @@ KRAKEN_REST_URL = "https://api.kraken.com/0/public"
 KRAKEN_PRIVATE_URL = "https://api.kraken.com/0/private"
 
 # Kraken symbol mappings
+# Crypto pairs on Kraken (note: BTC is XBT on Kraken)
 CRYPTO_SYMBOL_MAP = {
-    "BTC/USD": "XBTUSD",
-    "ETH/USD": "ETHUSD", 
-    "ADA/USD": "ADAUSD",
-    "SOL/USD": "SOLUSD",
-    "MATIC/USD": "MATICUSD",
-    "DOT/USD": "DOTUSD",
-    "LINK/USD": "LINKUSD",
-    "UNI/USD": "UNIUSD",
-    "AAVE/USD": "AAVEUSD",
-    "ATOM/USD": "ATOMUSD",
+    "BTC/USD": "XBT/USD",
+    "ETH/USD": "ETH/USD", 
+    "ADA/USD": "ADA/USD",
+    "SOL/USD": "SOL/USD",
+    "MATIC/USD": "MATIC/USD",
+    "DOT/USD": "DOT/USD",
+    "LINK/USD": "LINK/USD",
+    "UNI/USD": "UNI/USD",
+    "AAVE/USD": "AAVE/USD",
+    "ATOM/USD": "ATOM/USD",
 }
 
-STOCK_SYMBOL_MAP = {
-    "TSLA": "TSLA/USD",
-    "AAPL": "AAPL/USD", 
-    "GOOGL": "GOOGL/USD",
-    "MSFT": "MSFT/USD",
-    "AMZN": "AMZN/USD",
-    "NVDA": "NVDA/USD",
-    "META": "META/USD",
-    "SPY": "SPY/USD",
-    "QQQ": "QQQ/USD",
-    "IWM": "IWM/USD",
-    "GLD": "GLD/USD",
-    "TLT": "TLT/USD",
+# Kraken xStocks - tokenized stocks with "x" suffix
+# These are SPL tokens on Solana blockchain, tradable 24/5
+XSTOCK_SYMBOL_MAP = {
+    "TSLA": "TSLAx/USD",
+    "AAPL": "AAPLx/USD", 
+    "GOOGL": "GOOGLx/USD",
+    "MSFT": "MSFTx/USD",
+    "AMZN": "AMZNx/USD",
+    "NVDA": "NVDAx/USD",
+    "META": "METAx/USD",
+    "SPY": "SPYx/USD",
+    "QQQ": "QQQx/USD",
+    "IWM": "IWMx/USD",
+    "GLD": "GLDx/USD",
+    "TLT": "TLTx/USD",
 }
+
+# Supported symbols for validation
+SUPPORTED_CRYPTO = set(CRYPTO_SYMBOL_MAP.keys())
+SUPPORTED_XSTOCKS = set(XSTOCK_SYMBOL_MAP.keys())
 
 
 @dataclass
