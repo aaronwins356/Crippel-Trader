@@ -7,6 +7,10 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
+KRAKEN_MAKER_FEE = 0.0016
+KRAKEN_TAKER_FEE = 0.0026
+
+
 class TradeStat(BaseModel):
     """Aggregated statistics with Kraken fee accounting."""
 
@@ -16,27 +20,26 @@ class TradeStat(BaseModel):
     winning_trades: int = Field(default=0, ge=0)
     losing_trades: int = Field(default=0, ge=0)
     fees_paid: float = Field(default=0.0, ge=0.0)
-    realized_pnl: float = Field(default=0.0, ge=0.0)
+    realized_pnl: float = Field(default=0.0)
 
     def apply_fee(self, amount: float, is_maker: bool) -> float:
         """Apply Kraken maker/taker fee schedule to a trade value."""
 
-        fee_rate = 0.0016 if is_maker else 0.0026
+        fee_rate = KRAKEN_MAKER_FEE if is_maker else KRAKEN_TAKER_FEE
         fee = amount * fee_rate
         self.fees_paid += fee
         return fee
 
-    def record_trade(self, realized_pnl: float, is_winning: bool) -> None:
+    def record_trade(self, pnl: float) -> None:
         """Record the trade outcome and keep win/loss counts aligned."""
 
         self.total_trades += 1
-        if is_winning:
+        if pnl >= 0:
             self.winning_trades += 1
         else:
             self.losing_trades += 1
 
-        updated_pnl = self.realized_pnl + realized_pnl
-        self.realized_pnl = updated_pnl if updated_pnl >= 0 else 0.0
+        self.realized_pnl += pnl
 
     @property
     def win_rate(self) -> float:
@@ -78,7 +81,7 @@ class EngineState(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    capital: float = Field(default=1000.0, ge=0.0)
+    capital: float = Field(default=200.0, ge=0.0)
     risk: RiskConfig = Field(default_factory=RiskConfig)
     stats: TradeStat = Field(default_factory=TradeStat)
 
@@ -90,11 +93,9 @@ class EngineState(BaseModel):
 
         # Simple placeholder for realized PnL dynamics
         pnl = trade_value * (0.01 if trade.side == "sell" else -0.01)
-        is_winning = pnl >= 0
-        realized_component = pnl if is_winning else 0.0
-        self.stats.record_trade(realized_pnl=realized_component, is_winning=is_winning)
+        self.stats.record_trade(pnl)
 
-        self.capital = max(self.capital + pnl - fee, 0.0)
+        self.capital += pnl - fee
         return {
             "trade_value": trade_value,
             "fee_charged": fee,
@@ -121,3 +122,6 @@ if __name__ == "__main__":
     print("Executed trade summary:")
     for key, value in result.items():
         print(f"  {key}: {value}")
+
+    print(f"\nUpdated capital: ${state.capital:.2f}")
+    print("Updated stats:", state.stats)
