@@ -55,6 +55,9 @@ class EnhancedEngineRuntime:
             # Store runtime in app state for API access
             app.state.runtime = self
             
+            # Start notification service background task
+            await self.notification_service.start()
+            
             # Initialize strategies
             if not self.strategy_manager._strategies_initialized:
                 await self.strategy_manager._initialize_default_strategies()
