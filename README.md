@@ -15,47 +15,63 @@ Croc-Bot is a production-minded, AI-assisted trading platform that lets you rese
 - 🧾 **Config-Driven Everything** – Fine-tune behavior through a single `config.json`, version-controlled alongside your strategies.
 
 ## 🛠️ Quick Start
+### 0️⃣ Prerequisites
+- Python **3.10+** (3.11 recommended)
+- `git`
+- A Kraken account (only if you intend to trade live)
+
 ### 1️⃣ Clone & Install
 ```bash
 git clone https://github.com/aaronwins356/Croc-Bot.git
 cd Croc-Bot
 python -m venv .venv
-source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
+source .venv/bin/activate  # Windows (PowerShell): .venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
 ### 2️⃣ Configure the Bot
-Edit `config.json` with your favourite editor (VS Code, vim, nano, etc.). See the [🧭 Config Reference](#-config-reference) for field-level guidance.
-```bash
-cp config.json config.local.json  # optional safety copy
-nano config.json
-```
+1. Copy the template config (optional but recommended): `cp config.json config.local.json`
+2. Edit `config.json` with your preferred editor. At minimum review:
+   - `trading.mode` — `"paper"` (default) or `"real"`
+   - `api.kraken_key` / `api.kraken_secret` — required for live trading only
+   - `symbols` & capital allocation settings
+3. Revisit the [🧭 Config Reference](#-config-reference) for a full field breakdown.
 
-### 3️⃣ Run the Bot Engine
-Fire up your preferred runtime:
-- 🧪 Paper testing: `python start_croc_bot.py`
-- 💼 Live execution (after rehearsals): `python start_real_trading.py`
+### 3️⃣ Start a Trading Session
+From the project root with the virtual environment activated:
 
-### 4️⃣ Launch the Trading UI
-Open `trading_dashboard.html` directly in your browser:
-- 📂 macOS/Linux: `open trading_dashboard.html`
-- 🪟 Windows: `start trading_dashboard.html`
-- 🧪 Or simply drag-and-drop the file into any modern browser.
+| Scenario | Command |
+| --- | --- |
+| Paper simulation (no real orders) | `python start_croc_bot.py` |
+| Live trading (requires funded Kraken API key) | `python start_real_trading.py` |
 
-### 5️⃣ Chat with the AI Co-Pilot
-1. Install the optional local LLM extras: `python -m pip install -r crippel-trader/requirements-localllm.txt` (install PyTorch separately if you plan to use the Transformers backend).
-2. Drop your model weights under `models/local/` (e.g., `models/local/llama3-instruct.Q4_K_M.gguf` for llama.cpp or a Transformers directory for Qwen).
-3. Export the runtime variables before launching the backend:
+The terminal will stream status messages, fills, and risk alerts. Keep this process running while you interact with the dashboard.
+
+### 4️⃣ Launch the Trading Dashboard
+The dashboard is a static HTML file—no web server needed.
+
+- macOS/Linux: `open trading_dashboard.html`
+- Windows (PowerShell): `Start-Process trading_dashboard.html`
+- Any platform: drag-and-drop `trading_dashboard.html` into a modern browser.
+
+The UI automatically connects to the running backend for live metrics.
+
+### 5️⃣ (Optional) Enable the Local AI Co-Pilot
+1. Install the extra dependencies: `python -m pip install -r crippel-trader/requirements-localllm.txt`
+2. Place your model weights under `models/local/` (e.g. `models/local/llama3-instruct.Q4_K_M.gguf` for llama.cpp or a Transformers folder for Qwen).
+3. Export environment variables before starting the backend:
    ```bash
-   set AI_BACKEND=llamacpp           # on PowerShell use: $Env:AI_BACKEND="llamacpp"
-   set LOCAL_GGUF_MODEL=models/local/llama3-instruct.Q4_K_M.gguf
-   # For Transformers instead:
-   # set AI_BACKEND=hf
-   # set LOCAL_HF_MODEL=models/local/Qwen2.5-7B-Instruct
-   ```
-4. Run `python utils/ai_smoke.py` and verify it prints `CROCBOT READY`.
-5. Use the "AI Assistant" panel in the dashboard; it now calls the backend's `/api/ai/chat` endpoint which proxies to the in-process model.
+   # Example for llama.cpp
+   export AI_BACKEND=llamacpp
+   export LOCAL_GGUF_MODEL=models/local/llama3-instruct.Q4_K_M.gguf
 
+   # Example for Transformers (Linux/macOS syntax shown)
+   # export AI_BACKEND=hf
+   # export LOCAL_HF_MODEL=models/local/Qwen2.5-7B-Instruct
+   ```
+   Windows (PowerShell) equivalent: `$Env:AI_BACKEND="llamacpp"`
+4. Run `python utils/ai_smoke.py`; if it prints `CROCBOT READY`, the dashboard's AI Assistant panel is fully wired to the local model.
 ## 🧭 Config Reference
 `config.json` keeps Croc-Bot deterministic and reproducible. Each top-level key controls a focused part of the runtime:
 
