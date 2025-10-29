@@ -4,6 +4,9 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime
 from typing import Any, Dict, Optional
+from collections import deque
+from dataclasses import dataclass, field
+import time
 
 import httpx
 import structlog
@@ -12,6 +15,16 @@ from pydantic import BaseModel
 from .config import get_settings
 
 logger = structlog.get_logger(__name__)
+
+
+@dataclass
+class NotificationQueueItem:
+    """Item in the notification queue."""
+    title: str
+    message: str
+    color: int
+    fields: list[Dict[str, Any]]
+    timestamp: float = field(default_factory=time.time)
 
 
 class DiscordEmbed(BaseModel):
