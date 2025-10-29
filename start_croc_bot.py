@@ -35,10 +35,8 @@ def main():
     # Determine the correct Python executable
     if os.name == 'nt':  # Windows
         python_exe = venv_dir / "Scripts" / "python.exe"
-        pip_exe = venv_dir / "Scripts" / "pip.exe"
     else:  # Unix/Linux/macOS
         python_exe = venv_dir / "bin" / "python"
-        pip_exe = venv_dir / "bin" / "pip"
     
     # Install dependencies if needed
     requirements_file = project_root / "crippel-trader" / "requirements.txt"
@@ -46,7 +44,7 @@ def main():
         print("📦 Installing dependencies...")
         try:
             subprocess.run([
-                str(pip_exe), "install", "-r", str(requirements_file)
+                str(python_exe), "-m", "pip", "install", "-r", str(requirements_file)
             ], check=True, capture_output=True, text=True)
             print("✅ Dependencies installed successfully")
         except subprocess.CalledProcessError as e:

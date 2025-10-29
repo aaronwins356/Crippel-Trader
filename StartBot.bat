@@ -34,9 +34,16 @@ echo ✅ Python found
 echo.
 
 echo 📦 Installing/updating required packages...
-pip install fastapi uvicorn websockets requests python-multipart jinja2 >nul 2>&1
+python -m pip install --upgrade pip >nul 2>&1
 if errorlevel 1 (
-    echo ⚠️  Some packages may have failed to install, but continuing...
+    echo ⚠️  Failed to upgrade pip. Continuing with existing version...
+)
+python -m pip install -r crippel-trader\requirements.txt >nul 2>&1
+if errorlevel 1 (
+    echo ❌ Failed to install Croc-Bot dependencies.
+    echo    Run "python -m pip install -r crippel-trader\requirements.txt" manually for details.
+    pause
+    exit /b 1
 )
 
 echo ✅ Dependencies ready
