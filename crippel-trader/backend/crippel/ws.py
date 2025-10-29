@@ -29,6 +29,24 @@ class ConnectionManager:
         await websocket.close()
 
     async def broadcast(self, message: dict[str, Any]) -> None:
+        """Broadcast message to all connected WebSocket clients.
+        
+        Ensures message has required structure with safe defaults.
+        """
+        # Define default schema for safety
+        default_payload = {
+            "critical_alerts": [],
+            "warnings": [],
+            "info": [],
+        }
+        
+        # Merge with actual message, preserving existing values
+        if "payload" in message and isinstance(message["payload"], dict):
+            # Only add defaults for missing keys
+            for key, default_value in default_payload.items():
+                if key not in message["payload"]:
+                    message["payload"][key] = default_value
+        
         async with self._lock:
             websockets = list(self._connections.items())
         for websocket, queue in websockets:
