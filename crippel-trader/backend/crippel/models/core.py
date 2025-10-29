@@ -125,11 +125,13 @@ class RiskLimits(BaseModel):
 class TradeStat(BaseModel):
     """Aggregated trade statistics."""
 
-    total_trades: int
-    winning_trades: int
-    losing_trades: int
-    fees_paid: float
-    realized_pnl: float
+    total_trades: int = 0
+    winning_trades: int = 0
+    losing_trades: int = 0
+    fees_paid: float = 0.0
+    realized_pnl: float = 0.0
+
+    model_config = {"validate_assignment": True, "extra": "ignore"}
 
     @property
     def win_rate(self) -> float:
