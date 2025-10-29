@@ -175,11 +175,12 @@ class RealTradingEngine:
         is_crypto = any(crypto in symbol.upper() for crypto in ['BTC', 'ETH', 'ADA', 'SOL', 'MATIC'])
         
         if is_crypto:
-            fee_bps = self.trading_fees.crypto_maker_bps if is_maker else self.trading_fees.crypto_taker_bps
+            fee_rate = 0.0016 if is_maker else 0.0026
+            fee = order_value * fee_rate
         else:
             fee_bps = self.trading_fees.stock_maker_bps if is_maker else self.trading_fees.stock_taker_bps
-        
-        fee = order_value * (fee_bps / 10000)
+            fee = order_value * (fee_bps / 10000)
+
         return max(fee, self.trading_fees.min_fee_usd)
     
     def get_realistic_execution_price(self, symbol: str, side: OrderSide, 
@@ -369,6 +370,11 @@ class RealTradingEngine:
         is_maker = order.type == OrderType.LIMIT
         order_value = order.size * fill_price
         fee = self.calculate_trading_fees(order.symbol, order_value, is_maker)
+        # Ensure Kraken-style fee accounting is reflected in statistics
+        recorded_fee = self.stats.apply_fee(order_value, is_maker)
+        if fee > recorded_fee:
+            # Adjust for any minimum fee differences
+            self.stats.fees_paid += fee - recorded_fee
         
         # Create fill
         fill = Fill(
@@ -399,14 +405,7 @@ class RealTradingEngine:
         pnl_change = self.positions[order.symbol].realized_pnl - old_realized_pnl
         
         # Update statistics
-        self.stats.total_trades += 1
-        self.stats.fees_paid += fee
-        self.stats.realized_pnl += pnl_change
-        
-        if pnl_change > 0:
-            self.stats.winning_trades += 1
-        elif pnl_change < 0:
-            self.stats.losing_trades += 1
+        self.stats.record_trade(realized_pnl=pnl_change, is_winning=pnl_change >= 0)
         
         # Store fill
         self.filled_orders.append(fill)

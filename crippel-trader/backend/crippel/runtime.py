@@ -148,7 +148,8 @@ class EngineRuntime:
             position_after = self.portfolio.positions.get(fill.symbol)
             realized_after = position_after.realized_pnl if position_after else 0.0
             pnl_change = realized_after - realized_before
-            self.state_service.record_trade(pnl=pnl_change, fee=fill.fee)
+            trade_value = fill.price * fill.size
+            self.state_service.record_trade(pnl=pnl_change, trade_value=trade_value, is_maker=fill.maker)
             await self.repository.record_fill(fill)
             await self.connection_manager.broadcast(
                 {

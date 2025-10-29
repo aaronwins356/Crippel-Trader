@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .enums import Mode, OrderSide, OrderType, SignalType
 
@@ -125,19 +125,46 @@ class RiskLimits(BaseModel):
 class TradeStat(BaseModel):
     """Aggregated trade statistics."""
 
-    total_trades: int = 0
-    winning_trades: int = 0
-    losing_trades: int = 0
-    fees_paid: float = 0.0
-    realized_pnl: float = 0.0
+    model_config = ConfigDict(extra="forbid")
 
-    model_config = {"validate_assignment": True, "extra": "ignore"}
+    total_trades: int = Field(default=0, ge=0)
+    winning_trades: int = Field(default=0, ge=0)
+    losing_trades: int = Field(default=0, ge=0)
+    fees_paid: float = Field(default=0.0, ge=0.0)
+    realized_pnl: float = Field(default=0.0, ge=0.0)
+
+    def apply_fee(self, amount: float, is_maker: bool) -> float:
+        """Apply Kraken-style maker/taker fee and accumulate it."""
+
+        fee_rate = 0.0016 if is_maker else 0.0026
+        fee = amount * fee_rate
+        self.fees_paid += fee
+        return fee
+
+    def record_trade(self, realized_pnl: float, is_winning: bool) -> None:
+        """Record the outcome of a trade and keep counters consistent."""
+
+        self.total_trades += 1
+        if is_winning:
+            self.winning_trades += 1
+        else:
+            self.losing_trades += 1
+
+        # Enforce non-negative realized PnL while accumulating changes
+        updated_pnl = self.realized_pnl + realized_pnl
+        self.realized_pnl = updated_pnl if updated_pnl >= 0 else 0.0
 
     @property
     def win_rate(self) -> float:
         if self.total_trades == 0:
             return 0.0
         return self.winning_trades / self.total_trades
+
+    @model_validator(mode="after")
+    def _validate_counts(self) -> "TradeStat":
+        if self.winning_trades + self.losing_trades > self.total_trades:
+            raise ValueError("Winning + losing trades cannot exceed total trades.")
+        return self
 
 
 class ModeState(BaseModel):

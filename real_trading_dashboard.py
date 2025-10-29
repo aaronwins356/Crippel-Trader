@@ -5,7 +5,7 @@ import asyncio
 import json
 import time
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Literal
 
 import streamlit as st
 import pandas as pd
@@ -77,69 +77,90 @@ st.markdown("""
 API_BASE_URL = "http://localhost:8000/api"
 
 class RealTradingAPI:
-    """API client for real trading system."""
-    
+    """API client for trading system endpoints."""
+
+    MODE_ENDPOINTS: Dict[str, str] = {"real": "real-trading", "paper": "paper-trading"}
+
     @staticmethod
-    def get_status():
-        """Get real trading system status."""
+    def _resolve_path(mode: Literal["real", "paper"]) -> str:
+        return RealTradingAPI.MODE_ENDPOINTS.get(mode, "real-trading")
+
+    @staticmethod
+    def get_status(mode: Literal["real", "paper"] = "real"):
+        """Get trading system status for the desired mode."""
+
         try:
-            response = requests.get(f"{API_BASE_URL}/real-trading/status", timeout=5)
+            endpoint = RealTradingAPI._resolve_path(mode)
+            response = requests.get(f"{API_BASE_URL}/{endpoint}/status", timeout=5)
             return response.json() if response.status_code == 200 else None
-        except:
+        except Exception:
             return None
-    
+
     @staticmethod
-    def get_portfolio():
-        """Get real trading portfolio."""
+    def get_portfolio(mode: Literal["real", "paper"] = "real"):
+        """Get portfolio snapshot."""
+
         try:
-            response = requests.get(f"{API_BASE_URL}/real-trading/portfolio", timeout=5)
+            endpoint = RealTradingAPI._resolve_path(mode)
+            response = requests.get(f"{API_BASE_URL}/{endpoint}/portfolio", timeout=5)
             return response.json() if response.status_code == 200 else None
-        except:
+        except Exception:
             return None
-    
+
     @staticmethod
-    def get_risk_metrics():
+    def get_risk_metrics(mode: Literal["real", "paper"] = "real"):
         """Get risk metrics."""
+
         try:
-            response = requests.get(f"{API_BASE_URL}/real-trading/risk-metrics", timeout=5)
+            endpoint = RealTradingAPI._resolve_path(mode)
+            response = requests.get(f"{API_BASE_URL}/{endpoint}/risk-metrics", timeout=5)
             return response.json() if response.status_code == 200 else None
-        except:
+        except Exception:
             return None
-    
+
     @staticmethod
     def get_market_data(symbol: str):
         """Get market data for symbol."""
+
         try:
             response = requests.get(f"{API_BASE_URL}/real-trading/market-data/{symbol}", timeout=5)
             return response.json() if response.status_code == 200 else None
-        except:
+        except Exception:
             return None
-    
+
     @staticmethod
-    def start_trading(config: dict):
-        """Start real trading system."""
+    def start_trading(config: dict, mode: Literal["real", "paper"] = "real"):
+        """Start trading system in the requested mode."""
+
         try:
-            response = requests.post(f"{API_BASE_URL}/real-trading/start", json=config, timeout=10)
+            endpoint = RealTradingAPI._resolve_path(mode)
+            response = requests.post(f"{API_BASE_URL}/{endpoint}/start", json=config, timeout=10)
             return response.json() if response.status_code == 200 else None
-        except:
+        except Exception:
             return None
-    
+
     @staticmethod
-    def stop_trading():
-        """Stop real trading system."""
+    def stop_trading(mode: Literal["real", "paper"] = "real"):
+        """Stop trading system in the requested mode."""
+
         try:
-            response = requests.post(f"{API_BASE_URL}/real-trading/stop", timeout=10)
+            endpoint = RealTradingAPI._resolve_path(mode)
+            response = requests.post(f"{API_BASE_URL}/{endpoint}/stop", timeout=10)
             return response.json() if response.status_code == 200 else None
-        except:
+        except Exception:
             return None
-    
+
     @staticmethod
-    def execute_manual_trade(trade_data: dict):
-        """Execute manual trade."""
+    def execute_manual_trade(trade_data: dict, mode: Literal["real", "paper"] = "real"):
+        """Execute manual trade in a given mode."""
+
         try:
-            response = requests.post(f"{API_BASE_URL}/real-trading/manual-trade", json=trade_data, timeout=10)
+            endpoint = RealTradingAPI._resolve_path(mode)
+            response = requests.post(
+                f"{API_BASE_URL}/{endpoint}/manual-trade", json=trade_data, timeout=10
+            )
             return response.json() if response.status_code == 200 else None
-        except:
+        except Exception:
             return None
 
 def main():
@@ -153,96 +174,183 @@ def main():
     if 'last_update' not in st.session_state:
         st.session_state.last_update = time.time()
     
+    live_status = RealTradingAPI.get_status("real")
+    paper_status = RealTradingAPI.get_status("paper")
+    auto_refresh = False
+
     # Sidebar - System Controls
     with st.sidebar:
         st.header("🎛️ System Controls")
-        
-        # Get current status
-        status = RealTradingAPI.get_status()
-        
-        if status and status.get('is_running'):
-            st.markdown('<div class="success-box">✅ Real Trading System ACTIVE</div>', unsafe_allow_html=True)
-            
-            if st.button("🛑 Stop Trading System", type="secondary"):
-                result = RealTradingAPI.stop_trading()
+
+        # Live trading controls
+        st.subheader("🟢 Live Trading")
+        if live_status and live_status.get('is_running'):
+            st.markdown('<div class="success-box">✅ Live trading system ACTIVE</div>', unsafe_allow_html=True)
+            if st.button("🛑 Stop Live Trading", use_container_width=True):
+                result = RealTradingAPI.stop_trading("real")
                 if result:
-                    st.success("Trading system stopped!")
+                    st.success("Live trading stopped!")
                     st.rerun()
                 else:
-                    st.error("Failed to stop trading system")
-        
+                    st.error("Failed to stop live trading")
         else:
-            st.markdown('<div class="warning-box">⚠️ Real Trading System INACTIVE</div>', unsafe_allow_html=True)
-            
-            st.subheader("Start Trading System")
-            
-            initial_capital = st.number_input("Initial Capital ($)", min_value=100.0, max_value=100000.0, value=1000.0, step=100.0)
-            risk_aggression = st.slider("Risk Level", min_value=1, max_value=10, value=5, help="1=Conservative, 10=Aggressive")
-            max_positions = st.number_input("Max Positions", min_value=1, max_value=20, value=5)
-            
-            if st.button("🚀 Start Real Trading", type="primary"):
+            st.markdown('<div class="warning-box">⚠️ Live trading system INACTIVE</div>', unsafe_allow_html=True)
+
+        with st.form("live_start_form"):
+            initial_capital = st.number_input(
+                "Initial Capital ($)", min_value=100.0, max_value=500000.0, value=10000.0, step=500.0, key="live_initial_capital"
+            )
+            col_live_a, col_live_b = st.columns(2)
+            with col_live_a:
+                risk_aggression = st.slider(
+                    "Risk Level", min_value=1, max_value=10, value=5, help="1=Conservative, 10=Aggressive", key="live_risk_level"
+                )
+            with col_live_b:
+                max_positions = st.number_input("Max Positions", min_value=1, max_value=30, value=8, key="live_max_positions")
+
+            with st.expander("Advanced risk controls", expanded=False):
+                max_slippage = st.slider("Max Slippage (%)", min_value=0.0, max_value=1.0, value=0.15, step=0.01, key="live_slippage")
+                hedging_enabled = st.checkbox("Enable Hedging", value=True, key="live_hedging")
+                auto_restart = st.checkbox("Auto-Restart on Disconnect", value=True, key="live_auto_restart")
+                strategy_allocation = st.multiselect(
+                    "Strategies", ["Momentum", "Mean Reversion", "Arbitrage", "Market Making"],
+                    default=["Momentum", "Market Making"],
+                    key="live_strategies",
+                )
+
+            start_live = st.form_submit_button("🚀 Start Live Trading", use_container_width=True)
+            if start_live:
                 config = {
                     "initial_capital": initial_capital,
                     "risk_aggression": risk_aggression,
                     "max_positions": max_positions,
-                    "enable_real_trading": True
+                    "enable_real_trading": True,
+                    "max_slippage_pct": max_slippage / 100,
+                    "hedging_enabled": hedging_enabled,
+                    "auto_restart": auto_restart,
+                    "strategies": strategy_allocation,
                 }
-                
-                result = RealTradingAPI.start_trading(config)
+                result = RealTradingAPI.start_trading(config, mode="real")
                 if result:
-                    st.success("Real trading system started!")
+                    st.success("Live trading system started!")
                     st.rerun()
                 else:
-                    st.error("Failed to start trading system")
-        
+                    st.error("Failed to start live trading")
+
         st.markdown("---")
-        
-        # Manual Trading
-        st.subheader("📊 Manual Trading")
-        
-        if status and status.get('is_running'):
-            symbol = st.selectbox("Symbol", ["BTC/USD", "ETH/USD", "ADA/USD", "SOL/USD", "TSLA", "AAPL", "GOOGL", "MSFT", "NVDA", "SPY"])
-            side = st.selectbox("Side", ["BUY", "SELL"])
-            size = st.number_input("Size", min_value=0.001, max_value=1000.0, value=0.1, step=0.001, format="%.6f")
-            order_type = st.selectbox("Order Type", ["LIMIT", "MARKET"])
-            
+
+        # Paper trading controls
+        st.subheader("🧪 Paper Trading")
+        if paper_status and paper_status.get('is_running'):
+            st.markdown('<div class="success-box">✅ Paper trading system ACTIVE</div>', unsafe_allow_html=True)
+            if st.button("⏹️ Stop Paper Trading", use_container_width=True):
+                result = RealTradingAPI.stop_trading("paper")
+                if result:
+                    st.success("Paper trading stopped!")
+                    st.rerun()
+                else:
+                    st.error("Failed to stop paper trading")
+        else:
+            st.markdown('<div class="warning-box">⚠️ Paper trading system INACTIVE</div>', unsafe_allow_html=True)
+
+        with st.form("paper_start_form"):
+            paper_capital = st.number_input(
+                "Simulation Capital ($)", min_value=100.0, max_value=1000000.0, value=25000.0, step=500.0, key="paper_initial_capital"
+            )
+            col_paper_a, col_paper_b = st.columns(2)
+            with col_paper_a:
+                paper_risk = st.slider("Risk Level (Paper)", min_value=1, max_value=10, value=4, key="paper_risk_level")
+            with col_paper_b:
+                paper_positions = st.number_input("Max Positions (Paper)", min_value=1, max_value=40, value=10, key="paper_max_positions")
+
+            with st.expander("Paper trading parameters", expanded=False):
+                latency_sim = st.slider("Latency Simulation (ms)", min_value=0, max_value=1000, value=120, step=10, key="paper_latency")
+                slippage_sim = st.slider("Slippage Simulation (%)", min_value=0.0, max_value=1.0, value=0.20, step=0.01, key="paper_slippage")
+                journal_trades = st.checkbox("Enable Trade Journaling", value=True, key="paper_journal")
+                benchmark_symbol = st.selectbox(
+                    "Benchmark Symbol", ["BTC/USD", "ETH/USD", "SPY", "QQQ"], index=0, key="paper_benchmark"
+                )
+
+            start_paper = st.form_submit_button("▶️ Start Paper Trading", use_container_width=True)
+            if start_paper:
+                config = {
+                    "initial_capital": paper_capital,
+                    "risk_aggression": paper_risk,
+                    "max_positions": paper_positions,
+                    "enable_real_trading": False,
+                    "latency_ms": latency_sim,
+                    "slippage_pct": slippage_sim / 100,
+                    "trade_journal": journal_trades,
+                    "benchmark": benchmark_symbol,
+                }
+                result = RealTradingAPI.start_trading(config, mode="paper")
+                if result:
+                    st.success("Paper trading system started!")
+                    st.rerun()
+                else:
+                    st.error("Failed to start paper trading")
+
+        st.markdown("---")
+
+        # Manual trading controls
+        st.subheader("📊 Manual Trading Desk")
+        trade_mode_label = st.selectbox("Execution Mode", ["Live", "Paper"], key="manual_mode_select")
+        target_mode = "real" if trade_mode_label == "Live" else "paper"
+        target_status = live_status if target_mode == "real" else paper_status
+
+        if target_status and target_status.get('is_running'):
+            symbol = st.selectbox(
+                "Symbol", ["BTC/USD", "ETH/USD", "ADA/USD", "SOL/USD", "TSLA", "AAPL", "GOOGL", "MSFT", "NVDA", "SPY"],
+                key="manual_symbol",
+            )
+            side = st.selectbox("Side", ["BUY", "SELL"], key="manual_side")
+            size = st.number_input(
+                "Order Size", min_value=0.001, max_value=1000.0, value=0.1, step=0.001, format="%.6f", key="manual_size"
+            )
+            order_type = st.selectbox("Order Type", ["LIMIT", "MARKET"], key="manual_order_type")
+
             if order_type == "LIMIT":
-                price = st.number_input("Limit Price", min_value=0.01, value=100.0, step=0.01)
+                price = st.number_input("Limit Price", min_value=0.01, value=100.0, step=0.01, key="manual_limit_price")
             else:
                 price = None
-            
-            if st.button("Execute Trade", type="primary"):
+
+            risk_override = st.checkbox("Bypass Risk Checks", value=False, key="manual_risk_override")
+
+            if st.button("Execute Manual Trade", use_container_width=True):
                 trade_data = {
                     "symbol": symbol,
                     "side": side,
                     "size": size,
                     "order_type": order_type,
-                    "price": price
+                    "price": price,
+                    "risk_override": risk_override,
                 }
-                
-                result = RealTradingAPI.execute_manual_trade(trade_data)
+
+                result = RealTradingAPI.execute_manual_trade(trade_data, mode=target_mode)
                 if result:
-                    st.success(f"Trade executed: {side} {size} {symbol}")
+                    st.success(f"Manual trade executed: {side} {size} {symbol} ({trade_mode_label})")
                 else:
-                    st.error("Trade failed - check validation")
+                    st.error("Manual trade failed - check validation")
         else:
-            st.info("Start trading system to enable manual trading")
-        
-        # Auto-refresh
+            st.info("Activate the selected trading system to enable manual orders")
+
         st.markdown("---")
-        auto_refresh = st.checkbox("Auto Refresh (5s)", value=True)
-        if auto_refresh:
-            time.sleep(5)
+        auto_refresh = st.checkbox("Auto Refresh (5s)", value=True, key="auto_refresh_toggle")
+        if st.button("🔄 Refresh Now", use_container_width=True):
             st.rerun()
-    
+
+    if auto_refresh:
+        time.sleep(5)
+        st.rerun()
+
     # Main content
-    if not status or not status.get('is_running'):
+    if not live_status or not live_status.get('is_running'):
         st.markdown('<div class="warning-box">⚠️ Real Trading System is not running. Use the sidebar to start it.</div>', unsafe_allow_html=True)
         return
     
     # Get data
-    portfolio = RealTradingAPI.get_portfolio()
-    risk_metrics = RealTradingAPI.get_risk_metrics()
+    portfolio = RealTradingAPI.get_portfolio("real")
+    risk_metrics = RealTradingAPI.get_risk_metrics("real")
     
     if not portfolio:
         st.error("Failed to load portfolio data")
@@ -399,19 +507,19 @@ def main():
     
     with col1:
         st.json({
-            "System Running": status.get('is_running', False),
-            "Current Equity": f"${status.get('current_equity', 0):,.2f}",
-            "Available Cash": f"${status.get('available_cash', 0):,.2f}",
-            "Open Positions": status.get('open_positions', 0),
-            "Open Orders": status.get('open_orders', 0),
-            "Trades Today": status.get('trades_today', 0)
+            "System Running": live_status.get('is_running', False),
+            "Current Equity": f"${live_status.get('current_equity', 0):,.2f}",
+            "Available Cash": f"${live_status.get('available_cash', 0):,.2f}",
+            "Open Positions": live_status.get('open_positions', 0),
+            "Open Orders": live_status.get('open_orders', 0),
+            "Trades Today": live_status.get('trades_today', 0)
         })
-    
+
     with col2:
         st.json({
-            "Subscribed Symbols": status.get('subscribed_symbols', []),
-            "Active Strategies": status.get('strategies_active', []),
-            "Last Update": status.get('last_update', 'Unknown')
+            "Subscribed Symbols": live_status.get('subscribed_symbols', []),
+            "Active Strategies": live_status.get('strategies_active', []),
+            "Last Update": live_status.get('last_update', 'Unknown')
         })
     
     # Footer
