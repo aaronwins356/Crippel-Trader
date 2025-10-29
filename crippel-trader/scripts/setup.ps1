@@ -31,25 +31,10 @@ Write-Host "Upgrade complete!" -ForegroundColor Green
 Write-Host ""
 
 Write-Host "Installing dependencies from requirements.txt..." -ForegroundColor Yellow
-Write-Host "Note: Some dependencies (ta-lib) may require Visual C++ build tools." -ForegroundColor Yellow
-Write-Host "If installation fails, you can skip ta-lib - it's optional." -ForegroundColor Yellow
-Write-Host ""
-
-pip install -r ../requirements.txt
+python -m pip install -r ../requirements.txt
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "WARNING: Some dependencies failed to install." -ForegroundColor Yellow
-    Write-Host "This is often due to ta-lib requiring native compilation." -ForegroundColor Yellow
-    Write-Host "The system will work without it." -ForegroundColor Yellow
-    Write-Host ""
-}
-
-Write-Host "Attempting to install optional dependencies..." -ForegroundColor Yellow
-# Try to install uvloop (will fail on Windows, that's OK)
-pip install uvloop 2>$null
-if ($LASTEXITCODE -eq 0) {
-    Write-Host "uvloop installed (Linux/Mac optimization)" -ForegroundColor Green
-} else {
-    Write-Host "uvloop skipped (Windows - not required)" -ForegroundColor Yellow
+    Write-Host "ERROR: Failed to install required dependencies." -ForegroundColor Red
+    exit 1
 }
 
 Write-Host ""
