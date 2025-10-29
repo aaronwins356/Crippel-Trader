@@ -44,11 +44,22 @@ class DiscordMessage(BaseModel):
 
 
 class NotificationService:
-    """Service for sending Discord notifications."""
+    """Service for sending Discord notifications with rate-limit handling."""
     
     def __init__(self):
         self.settings = get_settings()
         self.client = httpx.AsyncClient(timeout=10.0)
+        self._rate_limited_until: float = 0.0  # Timestamp when rate limit expires
+        self._pending_notifications: deque[NotificationQueueItem] = deque(maxlen=100)
+        self._notification_task: Optional[asyncio.Task] = None
+        self._debounce_window: float = 2.0  # Collapse similar notifications within 2 seconds
+        self._last_notification_time: float = 0.0
+        self._min_interval: float = 0.5  # Minimum 0.5s between notifications
+        self._startup_mode: bool = True  # Debounce more aggressively during startup
+        self._startup_messages: list[str] = []  # Collect startup messages
+        
+        # Start background notification processor
+        self._notification_task = asyncio.create_task(self._process_notification_queue())
         
     async def send_notification(
         self, 
