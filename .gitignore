@@ -2,3 +2,12 @@
 # Environment files
 *.env
 *.env.*
+
+# Repository analysis artefacts (allow committed samples)
+analysis/*
+!analysis/REPO_MAP.md
+!analysis/MODULES/
+!analysis/MODULES/*.md
+!analysis/DEPENDENCY_GRAPH.dot
+!analysis/INDEX.csv
+!analysis/HEATMAP.json

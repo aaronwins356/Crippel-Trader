@@ -1,0 +1,15 @@
+digraph G {
+  rankdir=LR;
+  subgraph cluster_Mixed {
+    label="Mixed";
+    "Croc-Bot";
+  }
+  subgraph cluster_Python {
+    label="Python";
+    "crippel-trader";
+  }
+  subgraph cluster_JavaScript {
+    label="JavaScript";
+    "crippel-trader-frontend";
+  }
+}

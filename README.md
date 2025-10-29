@@ -204,6 +204,20 @@ const ws = new WebSocket('ws://localhost:8000/ws/stream');
 ws.onmessage = (event) => console.log(JSON.parse(event.data));
 ```
 
+## 🗺️ Repository Mapping Utilities
+
+Generate architectural summaries and dependency reports for the repository with
+the bundled mapper:
+
+```bash
+python tools/repo_mapper.py . --output analysis
+```
+
+The command writes Markdown, CSV, JSON, and Graphviz artefacts into the
+`analysis/` directory capturing module boundaries, dependencies, and file-level
+metrics. Regenerate the reports after significant code changes to keep them up
+to date.
+
 ## 🚨 Important Notes
 
 ### **Paper Trading Mode**

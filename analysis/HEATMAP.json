@@ -1,0 +1,43 @@
+{
+  "Croc-Bot": {
+    "estimated_complexity": 57,
+    "file_count": 22,
+    "languages": [
+      "Markdown",
+      "Other",
+      "Python",
+      "YAML"
+    ],
+    "last_modified": "2025-10-29T06:10:39.730053",
+    "loc": 2957,
+    "test_file_count": 3
+  },
+  "crippel-trader": {
+    "estimated_complexity": 217,
+    "file_count": 65,
+    "languages": [
+      "Markdown",
+      "Other",
+      "Powershell",
+      "Python",
+      "SQL",
+      "Shell",
+      "TOML"
+    ],
+    "last_modified": "2025-10-29T05:54:30.785749",
+    "loc": 9017,
+    "test_file_count": 6
+  },
+  "crippel-trader-frontend": {
+    "estimated_complexity": 3,
+    "file_count": 12,
+    "languages": [
+      "JSON",
+      "JavaScript",
+      "Other"
+    ],
+    "last_modified": "2025-10-29T05:54:30.785749",
+    "loc": 423,
+    "test_file_count": 0
+  }
+}
