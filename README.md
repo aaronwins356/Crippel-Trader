@@ -1,6 +1,7 @@
 # 🐊 Croc-Bot — Real-Time AI-Assisted Trading Bot
+<img width="850" height="768" alt="ChatGPT Image Oct 29, 2025, 10_40_49 AM" src="https://github.com/user-attachments/assets/d7bdd3fd-dd4c-44e7-9a39-95f32f2984f3" />
 
-![Croc-Bot Logo](path/to/logo.png)
+
 
 ## 🚀 Why Croc-Bot?
 Croc-Bot is a production-minded, AI-assisted trading platform that lets you research, test, and deploy crypto strategies at Kraken speed. Whether you trade with real capital or prefer a risk-free sandbox, Croc-Bot keeps the guardrails up while an on-device LLM co-pilot helps you level-up your code.
