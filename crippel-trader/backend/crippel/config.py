@@ -16,11 +16,18 @@ class AppSettings(BaseSettings):
     env: Literal["dev", "prod", "test"] = Field(default="dev")
     database_url: str = Field(default="postgresql+asyncpg://postgres:password@localhost:5432/crippel_trading")
     
-    # Trading mode and API credentials
-    trading_mode: Literal["paper", "live"] = Field(default="paper")
+    # Trading mode and safety flags
+    trading_mode: Literal["paper", "real"] = Field(default="paper")
+    real_trading: int = Field(default=0, ge=0, le=1)  # 0=paper, 1=real (extra safety flag)
+    
+    # API credentials
     kraken_api_key: str = Field(default="")
     kraken_api_secret: str = Field(default="")
-    live_trading_enabled: bool = Field(default=False)
+    
+    @property
+    def is_live_trading(self) -> bool:
+        """Check if live trading is enabled (requires both flags)."""
+        return self.trading_mode == "real" and self.real_trading == 1 and bool(self.kraken_api_key and self.kraken_api_secret)
     
     # Risk management and aggression
     default_aggression: int = Field(default=3, ge=1, le=10)
