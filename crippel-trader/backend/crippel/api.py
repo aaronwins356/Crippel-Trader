@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from .config import get_settings
+from .config import get_settings as get_app_settings
 from .models.enums import Mode
 from .models.core import OrderSide, OrderType
 from .runtime import EngineRuntime
@@ -112,7 +112,7 @@ def get_runtime(request: Request) -> EngineRuntime:
 @router.get("/assets", response_model=List[AssetInfo])
 async def list_assets(runtime: EngineRuntime = Depends(get_runtime)) -> List[AssetInfo]:
     """Get list of available trading assets."""
-    settings = get_settings()
+    settings = get_app_settings()
     assets = []
     
     # Add crypto assets
@@ -363,7 +363,7 @@ async def get_trade_history(
 @router.get("/settings")
 async def get_settings(runtime: EngineRuntime = Depends(get_runtime)) -> JSONResponse:
     """Get current system settings."""
-    settings = get_settings()
+    settings = get_app_settings()
     
     current_aggression = 3
     trading_mode = "paper"
@@ -375,6 +375,7 @@ async def get_settings(runtime: EngineRuntime = Depends(get_runtime)) -> JSONRes
     return JSONResponse({
         "aggression": current_aggression,
         "trading_mode": trading_mode,
+        "mode": trading_mode,
         "initial_capital": settings.initial_capital,
         "max_capital": settings.max_capital,
         "supported_crypto_pairs": settings.supported_crypto_pairs,
@@ -542,7 +543,7 @@ async def healthz() -> JSONResponse:
 @router.get("/readyz")
 async def readyz(request: Request) -> JSONResponse:
     """Readiness check - indicates if service is ready to handle requests."""
-    settings = get_settings()
+    settings = get_app_settings()
     
     # Check critical components
     checks = {

@@ -5,7 +5,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, HttpUrl
+from pydantic import AnyHttpUrl, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -53,10 +53,17 @@ class AppSettings(BaseSettings):
     openai_api_key: str = Field(default="")
     ai_strategy_generation_enabled: bool = Field(default=True)
     strategy_evaluation_period_hours: int = Field(default=24, ge=1)
+    lmstudio_api_base: AnyHttpUrl = Field(default="http://localhost:1234/v1")
+    lmstudio_model: str = Field(default="croc-bot")
+    ai_decision_interval_seconds: int = Field(default=60, ge=10)
+    ai_max_trades_per_cycle: int = Field(default=3, ge=0)
+    ai_history_window: int = Field(default=128, ge=16)
+    ai_request_timeout: float = Field(default=30.0, ge=1.0)
+    ai_research_enabled: bool = Field(default=True)
     
     # Market data and assets
     supported_crypto_pairs: list[str] = Field(default=[
-        "BTC/USD", "ETH/USD", "ADA/USD", "SOL/USD", "MATIC/USD", 
+        "XBT/USD", "BTC/USD", "ETH/USD", "ADA/USD", "SOL/USD", "MATIC/USD",
         "DOT/USD", "LINK/USD", "UNI/USD", "AAVE/USD", "ATOM/USD"
     ])
     supported_stock_symbols: list[str] = Field(default=[
