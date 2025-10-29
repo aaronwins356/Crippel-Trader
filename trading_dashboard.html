@@ -121,10 +121,146 @@
             box-shadow: 0 12px 24px rgba(56, 189, 248, 0.35);
         }
 
+        .connection-settings {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: flex-end;
+        }
+
+        .connection-settings label {
+            flex: 1 1 260px;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.35rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+        }
+
+        .status-indicator.online {
+            color: #22d3ee;
+            border-color: rgba(34, 211, 238, 0.4);
+        }
+
+        .status-indicator.offline {
+            color: #f87171;
+            border-color: rgba(248, 113, 113, 0.4);
+        }
+
         .grid-two {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 1rem;
+        }
+
+        .metrics {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .metric {
+            background: rgba(30, 41, 59, 0.65);
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            flex: 1 1 160px;
+        }
+
+        .metric .label {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .metric .value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-top: 0.4rem;
+        }
+
+        .metric .subvalue {
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+
+        .stack {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .risk-grid,
+        .strategy-grid,
+        .system-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 0.85rem;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.35rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            background: rgba(15, 23, 42, 0.4);
+        }
+
+        .pill.critical {
+            border-color: rgba(248, 113, 113, 0.5);
+            color: #fca5a5;
+        }
+
+        .pill.warn {
+            border-color: rgba(250, 204, 21, 0.5);
+            color: #facc15;
+        }
+
+        .list-card {
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            border-radius: 12px;
+            padding: 1rem;
+            background: rgba(15, 23, 42, 0.55);
+        }
+
+        .list-card h3 {
+            font-size: 0.95rem;
+            margin-bottom: 0.6rem;
+            color: #94a3b8;
+        }
+
+        .list-card ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .list-card li {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            background: rgba(30, 41, 59, 0.45);
+            border-radius: 10px;
+            padding: 0.6rem 0.75rem;
+        }
+
+        .list-card li span.small {
+            font-size: 0.75rem;
+            color: #94a3b8;
         }
 
         .trade-log {
@@ -154,32 +290,6 @@
             justify-content: space-between;
             font-size: 0.8rem;
             color: #94a3b8;
-        }
-
-        .metrics {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
-
-        .metric {
-            background: rgba(30, 41, 59, 0.65);
-            border-radius: 10px;
-            padding: 0.75rem 1rem;
-            flex: 1 1 140px;
-        }
-
-        .metric .label {
-            font-size: 0.8rem;
-            color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-        }
-
-        .metric .value {
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin-top: 0.4rem;
         }
 
         .chat-panel h2 {
@@ -286,27 +396,69 @@
         <section class="panel control-panel">
             <header>
                 <h1>Croc-Bot Command Center</h1>
-                <p style="color: #94a3b8; margin: 0; font-size: 0.95rem;">Simulate trading strategies, tweak risk settings, and collaborate with your local LLM assistant.</p>
+                <p style="color: #94a3b8; margin: 0; font-size: 0.95rem;">
+                    Monitor the autonomous trading engine, adjust risk, and dispatch manual orders while collaborating with your local LLM assistant.
+                </p>
             </header>
 
-            <section class="metrics" id="metrics">
+            <div class="connection-settings">
+                <label>
+                    API Base URL
+                    <input type="url" id="api-base" placeholder="http://localhost:8000" />
+                </label>
+                <button type="button" id="apply-api-base">Connect</button>
+                <span id="api-status" class="status-indicator offline">Offline</span>
+            </div>
+
+            <section class="metrics" id="primary-metrics">
+                <div class="metric">
+                    <div class="label">Total Equity</div>
+                    <div class="value" id="metric-equity">$0.00</div>
+                    <div class="subvalue" id="metric-cash">Cash: $0.00</div>
+                </div>
                 <div class="metric">
                     <div class="label">Initial Capital</div>
-                    <div class="value" id="metric-capital">$100,000.00</div>
+                    <div class="value" id="metric-capital">$0.00</div>
+                    <div class="subvalue" id="metric-return">Return: 0.00%</div>
                 </div>
                 <div class="metric">
                     <div class="label">Aggression</div>
-                    <div class="value" id="metric-aggression">5</div>
+                    <div class="value" id="metric-aggression">-</div>
+                    <div class="subvalue" id="metric-open-positions">Positions: 0</div>
                 </div>
                 <div class="metric">
-                    <div class="label">Last Trade PnL</div>
+                    <div class="label">Realized PnL</div>
                     <div class="value" id="metric-pnl">$0.00</div>
+                    <div class="subvalue" id="metric-daily-pnl">Daily: $0.00</div>
                 </div>
             </section>
 
-            <form id="config-form">
+            <section class="metrics" id="secondary-metrics">
+                <div class="metric">
+                    <div class="label">Win Rate</div>
+                    <div class="value" id="metric-win-rate">0.0%</div>
+                    <div class="subvalue" id="metric-trades">Trades: 0</div>
+                </div>
+                <div class="metric">
+                    <div class="label">Fees Paid</div>
+                    <div class="value" id="metric-fees">$0.00</div>
+                    <div class="subvalue" id="metric-open-orders">Open Orders: 0</div>
+                </div>
+                <div class="metric">
+                    <div class="label">Max Drawdown</div>
+                    <div class="value" id="metric-drawdown">0.0%</div>
+                    <div class="subvalue" id="metric-risk-alerts">Alerts: 0</div>
+                </div>
+                <div class="metric">
+                    <div class="label">Ticks Processed</div>
+                    <div class="value" id="metric-ticks">0</div>
+                    <div class="subvalue" id="metric-uptime">Uptime: 0s</div>
+                </div>
+            </section>
+
+            <form id="config-form" class="stack">
                 <fieldset>
-                    <legend>Trading Session</legend>
+                    <legend>Trading Controls</legend>
                     <div class="grid-two">
                         <label>
                             Trading Mode
@@ -316,46 +468,75 @@
                             </select>
                         </label>
                         <label>
-                            Initial Capital (USD)
-                            <input type="number" id="capital" min="0" step="100" value="100000" />
+                            Live Mode Confirmation
+                            <input type="checkbox" id="confirm-live" />
                         </label>
                         <label>
-                            Aggression Level: <span id="aggression-display">5</span>
+                            Aggression Level: <span id="aggression-display">-</span>
                             <input type="range" id="aggression" min="1" max="10" step="1" value="5" />
                         </label>
                         <label>
-                            Maker Fee (%)
-                            <input type="number" id="maker-fee" min="0" step="0.01" value="0.16" />
+                            Symbol Watchlist
+                            <select id="symbols" multiple></select>
                         </label>
-                        <label>
-                            Taker Fee (%)
-                            <input type="number" id="taker-fee" min="0" step="0.01" value="0.26" />
-                        </label>
-                        <label>
-                            Symbol Whitelist
-                            <select id="symbols" multiple>
-                                <option value="BTC/USD">BTC/USD</option>
-                                <option value="ETH/USD">ETH/USD</option>
-                                <option value="SOL/USD">SOL/USD</option>
-                                <option value="BNB/USD">BNB/USD</option>
-                                <option value="XRP/USD">XRP/USD</option>
-                                <option value="DOGE/USD">DOGE/USD</option>
-                                <option value="ADA/USD">ADA/USD</option>
-                                <option value="LTC/USD">LTC/USD</option>
-                            </select>
-                        </label>
+                    </div>
+                    <div class="assistant-controls">
+                        <button type="button" id="apply-settings">Apply Settings</button>
+                        <button type="button" class="secondary" id="refresh-data">Refresh Data</button>
                     </div>
                 </fieldset>
 
-                <div class="assistant-controls">
-                    <button type="button" id="save-config">Save Config</button>
-                    <button type="button" class="secondary" id="load-config">Load Config</button>
-                    <button type="button" id="execute-trade">Execute Trade</button>
-                </div>
+                <fieldset>
+                    <legend>Manual Order Ticket</legend>
+                    <div class="grid-two">
+                        <label>
+                            Symbol
+                            <select id="order-symbol"></select>
+                        </label>
+                        <label>
+                            Side
+                            <select id="order-side">
+                                <option value="buy">Buy</option>
+                                <option value="sell">Sell</option>
+                            </select>
+                        </label>
+                        <label>
+                            Order Type
+                            <select id="order-type">
+                                <option value="market">Market</option>
+                                <option value="limit">Limit</option>
+                            </select>
+                        </label>
+                        <label>
+                            Size
+                            <input type="number" id="order-size" min="0" step="0.0001" placeholder="0.00" />
+                        </label>
+                        <label>
+                            Limit Price (if applicable)
+                            <input type="number" id="order-price" min="0" step="0.01" placeholder="0.00" />
+                        </label>
+                    </div>
+                    <button type="button" id="execute-trade">Submit Manual Order</button>
+                </fieldset>
             </form>
 
+            <section class="stack">
+                <div class="list-card">
+                    <h3>Risk Overview</h3>
+                    <div class="risk-grid" id="risk-grid"></div>
+                </div>
+                <div class="list-card">
+                    <h3>Strategy Signals</h3>
+                    <div class="strategy-grid" id="strategy-grid"></div>
+                </div>
+                <div class="list-card">
+                    <h3>System Status</h3>
+                    <div class="system-grid" id="system-grid"></div>
+                </div>
+            </section>
+
             <section>
-                <h2>Real-Time Trade Log</h2>
+                <h2>Recent Trades</h2>
                 <div class="trade-log" id="trade-log"></div>
             </section>
         </section>
@@ -395,37 +576,62 @@
         </div>
     </template>
     <script>
+        const LS_KEY_CONFIG = "croc-bot-config";
+        const LS_KEY_API = "croc-bot-api-base";
+
         const state = {
-            config: {
-                mode: "paper",
-                capital: 100000,
-                aggression: 5,
-                makerFee: 0.16,
-                takerFee: 0.26,
-                symbols: ["BTC/USD", "ETH/USD"]
-            },
-            tradeLog: [],
+            settings: null,
+            portfolio: null,
+            performance: null,
+            risk: null,
+            strategies: null,
+            trades: [],
+            status: null,
+            chatHistory: [],
             lastCodeSnippet: null,
-            autoTradeTimer: null,
-            chatHistory: []
+            websocket: null,
+            reconnectTimer: null,
+            apiBase: null,
+            pollTimer: null
         };
 
         const els = {
-            form: document.getElementById("config-form"),
+            apiBase: document.getElementById("api-base"),
+            apiStatus: document.getElementById("api-status"),
+            applyApiBase: document.getElementById("apply-api-base"),
             mode: document.getElementById("mode"),
-            capital: document.getElementById("capital"),
+            confirmLive: document.getElementById("confirm-live"),
             aggression: document.getElementById("aggression"),
             aggressionDisplay: document.getElementById("aggression-display"),
-            makerFee: document.getElementById("maker-fee"),
-            takerFee: document.getElementById("taker-fee"),
             symbols: document.getElementById("symbols"),
-            saveConfig: document.getElementById("save-config"),
-            loadConfig: document.getElementById("load-config"),
+            applySettings: document.getElementById("apply-settings"),
+            refreshData: document.getElementById("refresh-data"),
+            orderSymbol: document.getElementById("order-symbol"),
+            orderSide: document.getElementById("order-side"),
+            orderType: document.getElementById("order-type"),
+            orderSize: document.getElementById("order-size"),
+            orderPrice: document.getElementById("order-price"),
             executeTrade: document.getElementById("execute-trade"),
-            tradeLog: document.getElementById("trade-log"),
+            metricEquity: document.getElementById("metric-equity"),
+            metricCash: document.getElementById("metric-cash"),
             metricCapital: document.getElementById("metric-capital"),
+            metricReturn: document.getElementById("metric-return"),
             metricAggression: document.getElementById("metric-aggression"),
+            metricOpenPositions: document.getElementById("metric-open-positions"),
             metricPnl: document.getElementById("metric-pnl"),
+            metricDailyPnl: document.getElementById("metric-daily-pnl"),
+            metricWinRate: document.getElementById("metric-win-rate"),
+            metricTrades: document.getElementById("metric-trades"),
+            metricFees: document.getElementById("metric-fees"),
+            metricOpenOrders: document.getElementById("metric-open-orders"),
+            metricDrawdown: document.getElementById("metric-drawdown"),
+            metricRiskAlerts: document.getElementById("metric-risk-alerts"),
+            metricTicks: document.getElementById("metric-ticks"),
+            metricUptime: document.getElementById("metric-uptime"),
+            tradeLog: document.getElementById("trade-log"),
+            riskGrid: document.getElementById("risk-grid"),
+            strategyGrid: document.getElementById("strategy-grid"),
+            systemGrid: document.getElementById("system-grid"),
             chatHistory: document.getElementById("chat-history"),
             chatInput: document.getElementById("chat-input"),
             sendMessage: document.getElementById("send-message"),
@@ -434,74 +640,495 @@
             sandboxEndpoint: document.getElementById("sandbox-endpoint")
         };
 
-        const LS_KEY = "croc-bot-config";
+        function resolveDefaultApiBase() {
+            try {
+                if (window.location.protocol.startsWith("http")) {
+                    const url = new URL(window.location.href);
+                    if (url.port && url.port !== "80" && url.port !== "443") {
+                        return `${url.protocol}//${url.hostname}:${url.port}`;
+                    }
+                    return `${url.protocol}//${url.hostname}:8000`;
+                }
+            } catch (error) {
+                console.warn("Unable to derive default API base", error);
+            }
+            return "http://localhost:8000";
+        }
+
+        function setApiBase(url) {
+            state.apiBase = url.replace(/\/$/, "");
+            localStorage.setItem(LS_KEY_API, state.apiBase);
+            els.apiBase.value = state.apiBase;
+        }
+
+        async function fetchJson(path, options = {}) {
+            if (!state.apiBase) {
+                throw new Error("API base URL not configured");
+            }
+            const url = `${state.apiBase}${path}`;
+            const response = await fetch(url, {
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                ...options
+            });
+            if (!response.ok) {
+                throw new Error(`${response.status} ${response.statusText}`);
+            }
+            return response.json();
+        }
 
         function formatCurrency(value) {
-            return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
+            return new Intl.NumberFormat("en-US", {
+                style: "currency",
+                currency: "USD"
+            }).format(value ?? 0);
         }
 
         function formatPercent(value) {
-            return Number(value).toFixed(2) + "%";
+            return `${(value ?? 0).toFixed(2)}%`;
         }
 
-        function updateMetrics(latestPnL = 0) {
-            els.metricCapital.textContent = formatCurrency(state.config.capital);
-            els.metricAggression.textContent = state.config.aggression;
-            els.metricPnl.textContent = formatCurrency(latestPnL);
+        function formatNumber(value, fractionDigits = 0) {
+            return new Intl.NumberFormat("en-US", {
+                minimumFractionDigits: fractionDigits,
+                maximumFractionDigits: fractionDigits
+            }).format(value ?? 0);
         }
 
-        function refreshForm() {
-            els.mode.value = state.config.mode;
-            els.capital.value = state.config.capital;
-            els.aggression.value = state.config.aggression;
-            els.aggressionDisplay.textContent = state.config.aggression;
-            els.makerFee.value = state.config.makerFee;
-            els.takerFee.value = state.config.takerFee;
-            Array.from(els.symbols.options).forEach(option => {
-                option.selected = state.config.symbols.includes(option.value);
+        function updatePrimaryMetrics() {
+            const performance = state.performance;
+            const portfolio = state.portfolio;
+            const risk = state.risk;
+            const status = state.status;
+
+            if (performance) {
+                els.metricEquity.textContent = formatCurrency(performance.current_equity ?? 0);
+                els.metricCapital.textContent = formatCurrency(performance.initial_capital ?? 0);
+                els.metricReturn.textContent = `Return: ${formatPercent(performance.total_return_pct ?? 0)}`;
+                els.metricPnl.textContent = formatCurrency(performance.realized_pnl ?? 0);
+                els.metricDailyPnl.textContent = `Daily: ${formatCurrency(performance.daily_pnl ?? 0)}`;
+                els.metricWinRate.textContent = formatPercent(performance.win_rate_pct ?? 0);
+                els.metricTrades.textContent = `Trades: ${formatNumber(performance.total_trades ?? 0)}`;
+                els.metricFees.textContent = formatCurrency(performance.fees_paid ?? 0);
+                els.metricOpenOrders.textContent = `Open Orders: ${formatNumber(performance.open_orders ?? 0)}`;
+                els.metricDrawdown.textContent = formatPercent(performance.max_drawdown_pct ?? 0);
+                els.metricAggression.textContent = formatNumber(performance.aggression_level ?? risk?.current_aggression ?? 0);
+            }
+
+            if (portfolio) {
+                els.metricCash.textContent = `Cash: ${formatCurrency(portfolio.cash ?? 0)}`;
+            }
+
+            const activePositions = performance?.active_positions ?? Object.keys(portfolio?.positions ?? {}).length;
+            els.metricOpenPositions.textContent = `Positions: ${formatNumber(activePositions)}`;
+
+            if (risk) {
+                const alerts = (risk.active_alerts ?? 0) + (risk.critical_alerts ?? 0);
+                els.metricRiskAlerts.textContent = `Alerts: ${formatNumber(alerts)}`;
+            }
+
+            if (status) {
+                els.metricTicks.textContent = formatNumber(status.ticks_processed ?? 0);
+                if (status.uptime_seconds != null) {
+                    const hours = Math.floor(status.uptime_seconds / 3600);
+                    const minutes = Math.floor((status.uptime_seconds % 3600) / 60);
+                    els.metricUptime.textContent = `Uptime: ${hours}h ${minutes}m`;
+                } else {
+                    els.metricUptime.textContent = status.uptime ?? "Uptime: 0s";
+                }
+            }
+        }
+
+        function renderRisk() {
+            const container = els.riskGrid;
+            container.innerHTML = "";
+            if (!state.risk) {
+                container.textContent = "No risk data";
+                return;
+            }
+            const { current_aggression, active_alerts, critical_alerts, metrics } = state.risk;
+            const cards = [];
+            cards.push(`<div class="pill">Aggression ${formatNumber(current_aggression ?? 0)}</div>`);
+            cards.push(`<div class="pill ${critical_alerts ? "critical" : ""}">Critical ${formatNumber(critical_alerts ?? 0)}</div>`);
+            cards.push(`<div class="pill ${active_alerts ? "warn" : ""}">Active ${formatNumber(active_alerts ?? 0)}</div>`);
+            container.innerHTML = cards.join("");
+
+            if (metrics) {
+                Object.entries(metrics).forEach(([key, value]) => {
+                    const item = document.createElement("div");
+                    item.className = "metric";
+                    item.innerHTML = `
+                        <div class="label">${key.replace(/_/g, " ")}</div>
+                        <div class="value">${typeof value === "number" ? formatNumber(value, 3) : value}</div>
+                    `;
+                    container.appendChild(item);
+                });
+            }
+        }
+
+        function renderStrategies() {
+            const container = els.strategyGrid;
+            container.innerHTML = "";
+            if (!state.strategies) {
+                container.textContent = "No strategy data";
+                return;
+            }
+            const summary = document.createElement("div");
+            summary.className = "metric";
+            summary.innerHTML = `
+                <div class="label">Strategies</div>
+                <div class="value">${formatNumber(state.strategies.active_strategies ?? 0)} / ${formatNumber(state.strategies.total_strategies ?? 0)}</div>
+                <div class="subvalue">Signals today: ${formatNumber(state.strategies.total_signals_today ?? 0)}</div>
+            `;
+            container.appendChild(summary);
+
+            const strategies = state.strategies.strategies ?? {};
+            Object.values(strategies).slice(0, 6).forEach(strategy => {
+                const block = document.createElement("div");
+                block.className = "metric";
+                block.innerHTML = `
+                    <div class="label">${strategy.name}</div>
+                    <div class="value">${formatPercent((strategy.win_rate ?? 0) * 100)}</div>
+                    <div class="subvalue">Active: ${strategy.is_active ? "Yes" : "No"} • Signals: ${formatNumber(strategy.total_signals ?? 0)}</div>
+                `;
+                container.appendChild(block);
             });
-            updateMetrics();
+        }
+
+        function renderSystemStatus() {
+            const container = els.systemGrid;
+            container.innerHTML = "";
+            if (!state.status) {
+                container.textContent = "No system data";
+                return;
+            }
+            const fields = [
+                ["Trading", state.status.trading_active ? "Active" : "Stopped"],
+                ["Market Data", state.status.market_data_connected ? "Connected" : "Offline"],
+                ["Paper Trading", state.status.paper_trading_enabled ? "Enabled" : "Disabled"],
+                ["Live Trading", state.status.live_trading_enabled ? "Enabled" : "Disabled"],
+                ["Open Orders", formatNumber(state.status.open_orders ?? 0)],
+                ["Active Positions", formatNumber(state.status.active_positions ?? 0)]
+            ];
+
+            fields.forEach(([label, value]) => {
+                const block = document.createElement("div");
+                block.className = "metric";
+                block.innerHTML = `
+                    <div class="label">${label}</div>
+                    <div class="value">${value}</div>
+                `;
+                container.appendChild(block);
+            });
+        }
+
+        function renderTrades() {
+            els.tradeLog.innerHTML = "";
+            if (!state.trades.length) {
+                const empty = document.createElement("div");
+                empty.textContent = "No trades yet.";
+                empty.style.color = "#94a3b8";
+                els.tradeLog.appendChild(empty);
+                return;
+            }
+
+            const template = document.getElementById("trade-entry-template");
+            state.trades.slice(0, 50).forEach(trade => {
+                const entry = template.content.firstElementChild.cloneNode(true);
+                const priceText = typeof trade.price === "number" ? trade.price.toFixed(2) : "-";
+                const feeText = typeof trade.fee === "number" ? trade.fee.toFixed(4) : "0.0000";
+                const sizeText = typeof trade.size === "number" ? trade.size.toFixed(4) : "-";
+                const roleText = trade.maker === true ? "Maker" : trade.maker === false ? "Taker" : "Fill";
+
+                entry.querySelector(".pair").textContent = `${trade.symbol ?? "?"} • ${(trade.side ?? "").toUpperCase()}`;
+                entry.querySelector(".time").textContent = trade.timestamp ? new Date(trade.timestamp).toLocaleString() : "-";
+                entry.querySelector(".details").textContent = `Price ${priceText} • Fee ${feeText}`;
+                entry.querySelector(".size").textContent = `Size ${sizeText}`;
+                entry.querySelector(".pnl").textContent = roleText;
+                els.tradeLog.appendChild(entry);
+            });
+        }
+
+        async function loadSettings() {
+            const settings = await fetchJson("/api/settings");
+            state.settings = settings;
+            els.mode.value = settings.mode ?? settings.trading_mode ?? "paper";
+            els.aggression.value = settings.aggression ?? 5;
+            els.aggressionDisplay.textContent = els.aggression.value;
+
+            const symbols = [...new Set([...(settings.supported_crypto_pairs ?? []), ...(settings.supported_stock_symbols ?? [])])];
+            populateSymbolSelectors(symbols);
+
+            updatePrimaryMetrics();
+        }
+
+        function populateSymbolSelectors(symbols) {
+            els.symbols.innerHTML = "";
+            els.orderSymbol.innerHTML = "";
+            symbols.forEach(symbol => {
+                const option = document.createElement("option");
+                option.value = symbol;
+                option.textContent = symbol;
+                els.symbols.appendChild(option);
+
+                const orderOption = option.cloneNode(true);
+                els.orderSymbol.appendChild(orderOption);
+            });
+            if (symbols.length) {
+                els.orderSymbol.value = symbols[0];
+            }
+        }
+
+        async function loadPortfolio() {
+            state.portfolio = await fetchJson("/api/portfolio");
+        }
+
+        async function loadPerformance() {
+            state.performance = await fetchJson("/api/performance");
+        }
+
+        async function loadRisk() {
+            state.risk = await fetchJson("/api/risk");
+        }
+
+        async function loadStrategies() {
+            state.strategies = await fetchJson("/api/strategies");
+        }
+
+        async function loadTrades() {
+            const data = await fetchJson("/api/trades?page=1&page_size=100");
+            state.trades = data.trades ?? [];
+        }
+
+        async function loadStatus() {
+            state.status = await fetchJson("/api/status");
+        }
+
+        async function refreshAll() {
+            try {
+                els.apiStatus.textContent = "Syncing";
+                els.apiStatus.classList.remove("offline");
+                els.apiStatus.classList.add("online");
+
+                await Promise.all([
+                    loadSettings(),
+                    loadPortfolio(),
+                    loadPerformance(),
+                    loadRisk(),
+                    loadStrategies(),
+                    loadTrades(),
+                    loadStatus()
+                ]);
+
+                updatePrimaryMetrics();
+                renderRisk();
+                renderStrategies();
+                renderSystemStatus();
+                renderTrades();
+                els.apiStatus.textContent = "Connected";
+            } catch (error) {
+                console.error("Failed to refresh data", error);
+                els.apiStatus.textContent = "Offline";
+                els.apiStatus.classList.add("offline");
+                els.apiStatus.classList.remove("online");
+                notify("Unable to reach Croc-Bot API", "error");
+            }
+        }
+
+        function schedulePolling() {
+            if (state.pollTimer) {
+                clearInterval(state.pollTimer);
+            }
+            state.pollTimer = setInterval(() => {
+                refreshAll().catch(error => console.error("Polling failed", error));
+            }, 15000);
+        }
+
+        async function applySettings() {
+            try {
+                const aggression = Number(els.aggression.value);
+                if (!Number.isFinite(aggression)) {
+                    notify("Aggression must be a number", "warn");
+                    return;
+                }
+
+                await fetchJson("/api/settings/aggression", {
+                    method: "POST",
+                    body: JSON.stringify({ aggression })
+                });
+                state.risk = { ...state.risk, current_aggression: aggression };
+                notify("Aggression updated");
+
+                const mode = els.mode.value;
+                if (mode === "live" && !els.confirmLive.checked) {
+                    notify("Confirm live mode before switching", "warn");
+                } else {
+                    await fetchJson("/api/settings/mode", {
+                        method: "POST",
+                        body: JSON.stringify({ mode, confirm: els.confirmLive.checked })
+                    });
+                    notify(`Mode set to ${mode}`);
+                }
+
+                await refreshAll();
+            } catch (error) {
+                console.error("Failed to apply settings", error);
+                notify(`Failed to apply settings: ${error.message}`, "error");
+            }
+        }
+
+        async function submitManualOrder() {
+            const symbol = els.orderSymbol.value;
+            const side = els.orderSide.value;
+            const type = els.orderType.value;
+            const size = Number(els.orderSize.value);
+            const price = Number(els.orderPrice.value);
+
+            if (!symbol || !Number.isFinite(size) || size <= 0) {
+                notify("Enter a valid symbol and size", "warn");
+                return;
+            }
+
+            try {
+            if (type === "limit" && (!Number.isFinite(price) || price <= 0)) {
+                notify("Enter a valid limit price", "warn");
+                return;
+            }
+
+            const payload = {
+                symbol,
+                side,
+                type,
+                size,
+                ...(type === "limit" ? { price } : {})
+            };
+                await fetchJson("/api/orders", {
+                    method: "POST",
+                    body: JSON.stringify(payload)
+                });
+                notify("Manual order submitted");
+                els.orderSize.value = "";
+                els.orderPrice.value = "";
+                await loadTrades();
+                renderTrades();
+            } catch (error) {
+                console.error("Failed to submit manual order", error);
+                notify(`Order failed: ${error.message}`, "error");
+            }
+        }
+
+        function connectWebSocket() {
+            if (!state.apiBase) {
+                return;
+            }
+
+            if (state.websocket) {
+                state.websocket.close();
+                state.websocket = null;
+            }
+
+            let wsUrl;
+            try {
+                const base = new URL(state.apiBase);
+                const protocol = base.protocol === "https:" ? "wss:" : "ws:";
+                wsUrl = `${protocol}//${base.host}/ws/stream`;
+            } catch (error) {
+                console.error("Invalid API base for WebSocket", error);
+                return;
+            }
+
+            const websocket = new WebSocket(wsUrl);
+            state.websocket = websocket;
+
+            websocket.addEventListener("open", () => {
+                els.apiStatus.textContent = "Connected";
+                els.apiStatus.classList.add("online");
+                els.apiStatus.classList.remove("offline");
+            });
+
+            websocket.addEventListener("message", event => {
+                try {
+                    const message = JSON.parse(event.data);
+                    if (message.channel === "system:update") {
+                        if (message.payload.performance) {
+                            state.performance = message.payload.performance;
+                        }
+                        if (message.payload.portfolio) {
+                            state.portfolio = {
+                                ...(state.portfolio ?? {}),
+                                ...message.payload.portfolio
+                            };
+                        }
+                        if (message.payload.risk) {
+                            state.risk = {
+                                ...(state.risk ?? {}),
+                                ...message.payload.risk
+                            };
+                        }
+                        if (message.payload.strategies && state.strategies) {
+                            state.strategies = {
+                                ...state.strategies,
+                                ...message.payload.strategies
+                            };
+                        }
+                        if (message.payload.system) {
+                            state.status = {
+                                ...(state.status ?? {}),
+                                ...message.payload.system
+                            };
+                        }
+                        updatePrimaryMetrics();
+                        renderRisk();
+                        renderStrategies();
+                        renderSystemStatus();
+                    }
+                } catch (error) {
+                    console.error("Failed to process WebSocket message", error);
+                }
+            });
+
+            websocket.addEventListener("close", () => {
+                els.apiStatus.textContent = "Disconnected";
+                els.apiStatus.classList.add("offline");
+                els.apiStatus.classList.remove("online");
+                if (state.reconnectTimer) {
+                    clearTimeout(state.reconnectTimer);
+                }
+                state.reconnectTimer = setTimeout(connectWebSocket, 5000);
+            });
+
+            websocket.addEventListener("error", error => {
+                console.error("WebSocket error", error);
+                websocket.close();
+            });
         }
 
         function captureForm() {
-            const selectedSymbols = Array.from(els.symbols.selectedOptions).map(option => option.value);
-            state.config = {
+            const config = {
                 mode: els.mode.value,
-                capital: Number(els.capital.value) || 0,
-                aggression: Number(els.aggression.value) || 1,
-                makerFee: Number(els.makerFee.value) || 0,
-                takerFee: Number(els.takerFee.value) || 0,
-                symbols: selectedSymbols
+                aggression: Number(els.aggression.value),
+                watchlist: Array.from(els.symbols.selectedOptions).map(option => option.value)
             };
-            updateMetrics();
-        }
-        function persistConfig() {
-            captureForm();
-            localStorage.setItem(LS_KEY, JSON.stringify(state.config));
-            notify("Configuration saved to localStorage.");
+            localStorage.setItem(LS_KEY_CONFIG, JSON.stringify(config));
         }
 
-        function loadPersistedConfig() {
-            const raw = localStorage.getItem(LS_KEY);
+        function loadPersistedForm() {
+            const raw = localStorage.getItem(LS_KEY_CONFIG);
             if (!raw) {
-                notify("No saved configuration found.", "warn");
                 return;
             }
             try {
-                const parsed = JSON.parse(raw);
-                state.config = {
-                    mode: parsed.mode || "paper",
-                    capital: Number(parsed.capital) || 0,
-                    aggression: Number(parsed.aggression) || 1,
-                    makerFee: Number(parsed.makerFee) || 0,
-                    takerFee: Number(parsed.takerFee) || 0,
-                    symbols: Array.isArray(parsed.symbols) ? parsed.symbols : []
-                };
-                refreshForm();
-                notify("Configuration loaded from localStorage.");
+                const config = JSON.parse(raw);
+                if (config.mode) {
+                    els.mode.value = config.mode;
+                }
+                if (typeof config.aggression === "number") {
+                    els.aggression.value = config.aggression;
+                    els.aggressionDisplay.textContent = config.aggression;
+                }
             } catch (error) {
-                console.error("Failed to load configuration", error);
-                notify("Failed to load configuration.", "error");
+                console.warn("Failed to load stored config", error);
             }
         }
 
@@ -509,14 +1136,14 @@
             const toast = document.createElement("div");
             toast.textContent = message;
             toast.style.position = "fixed";
-            toast.style.bottom = "24px";
-            toast.style.right = "24px";
-            toast.style.padding = "0.75rem 1rem";
-            toast.style.borderRadius = "10px";
-            toast.style.zIndex = 9999;
-            toast.style.fontSize = "0.9rem";
-            toast.style.boxShadow = "0 12px 24px rgba(0, 0, 0, 0.35)";
-            toast.style.transition = "opacity 0.4s ease";
+            toast.style.bottom = "1.5rem";
+            toast.style.right = "1.5rem";
+            toast.style.padding = "0.75rem 1.2rem";
+            toast.style.borderRadius = "12px";
+            toast.style.backdropFilter = "blur(12px)";
+            toast.style.transition = "opacity 0.3s ease";
+            toast.style.opacity = "0.95";
+            toast.style.zIndex = "9999";
 
             const colors = {
                 info: ["rgba(56, 189, 248, 0.25)", "#38bdf8"],
@@ -533,122 +1160,7 @@
                 setTimeout(() => toast.remove(), 400);
             }, 2400);
         }
-        function addTradeEntry(trade) {
-            state.tradeLog.unshift(trade);
-            const template = document.getElementById("trade-entry-template");
-            const entry = template.content.firstElementChild.cloneNode(true);
-            entry.querySelector(".pair").textContent = `${trade.symbol} • ${trade.side.toUpperCase()}`;
-            entry.querySelector(".time").textContent = trade.timestamp.toLocaleTimeString();
-            entry.querySelector(".details").textContent = `Price ${trade.price.toFixed(2)} • Fees ${formatPercent(trade.feePercent)}`;
-            entry.querySelector(".size").textContent = `Size ${trade.size.toFixed(4)}`;
-            entry.querySelector(".pnl").textContent = `PnL ${formatCurrency(trade.pnl)}`;
 
-            els.tradeLog.prepend(entry);
-            while (els.tradeLog.children.length > 100) {
-                els.tradeLog.removeChild(els.tradeLog.lastElementChild);
-            }
-            updateMetrics(trade.pnl);
-        }
-
-        function randomChoice(list) {
-            return list[Math.floor(Math.random() * list.length)];
-        }
-
-        function simulateTrade(forcedSymbol) {
-            captureForm();
-            const symbolPool = state.config.symbols.length ? state.config.symbols : Array.from(els.symbols.options).map(option => option.value);
-            const symbol = forcedSymbol || randomChoice(symbolPool);
-            const side = Math.random() > 0.5 ? "buy" : "sell";
-            const basePrice = symbol.includes("BTC") ? 68000 : symbol.includes("ETH") ? 3800 : 200 + Math.random() * 200;
-            const volatility = state.config.aggression / 10;
-            const price = basePrice * (1 + (Math.random() - 0.5) * 0.05 * volatility);
-            const size = (state.config.capital * (0.005 + Math.random() * 0.02) * (state.config.aggression / 10)) / price;
-            const feePercent = side === "buy" ? state.config.takerFee : state.config.makerFee;
-            const pnl = (Math.random() - 0.4) * state.config.aggression * 20;
-            const trade = {
-                id: crypto.randomUUID(),
-                symbol,
-                side,
-                price,
-                size,
-                feePercent,
-                pnl,
-                timestamp: new Date()
-            };
-            addTradeEntry(trade);
-        }
-
-        function startMockStream() {
-            if (state.autoTradeTimer) {
-                clearInterval(state.autoTradeTimer);
-            }
-            state.autoTradeTimer = setInterval(() => simulateTrade(), 5000);
-        }
-
-        function stopMockStream() {
-            if (state.autoTradeTimer) {
-                clearInterval(state.autoTradeTimer);
-                state.autoTradeTimer = null;
-            }
-        }
-        function handleAggressionChange(event) {
-            els.aggressionDisplay.textContent = event.target.value;
-            captureForm();
-        }
-
-        async function sendChatMessage() {
-            const content = els.chatInput.value.trim();
-            if (!content) {
-                return;
-            }
-            const model = els.modelName.value.trim();
-            if (!model) {
-                notify("Specify a model name before sending.", "warn");
-                return;
-            }
-
-            const userMessage = { role: "user", content };
-            state.chatHistory.push(userMessage);
-            renderChat();
-            els.chatInput.value = "";
-
-            const assistantPlaceholder = { role: "assistant", content: "Thinking…", pending: true };
-            state.chatHistory.push(assistantPlaceholder);
-            renderChat();
-
-            try {
-                const payloadMessages = state.chatHistory
-                    .filter(message => !message.pending)
-                    .map(message => ({ role: message.role, content: message.content }));
-                const response = await fetch("http://localhost:1234/v1/chat/completions", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        model,
-                        messages: payloadMessages,
-                        temperature: 0.3,
-                        max_tokens: 800
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
-                const data = await response.json();
-                const answer = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content
-                    ? data.choices[0].message.content
-                    : "No response received.";
-                state.chatHistory[state.chatHistory.length - 1] = { role: "assistant", content: answer };
-                extractLatestCode(answer);
-                renderChat();
-            } catch (error) {
-                console.error("Assistant request failed", error);
-                state.chatHistory[state.chatHistory.length - 1] = { role: "assistant", content: `Error: ${error.message}` };
-                renderChat();
-                notify("Failed to reach LM Studio. Ensure it is running.", "error");
-            }
-        }
         function extractLatestCode(text) {
             const parts = text.split('```');
             for (let i = parts.length - 1; i >= 1; i -= 1) {
@@ -761,31 +1273,11 @@
 
             for (let index = 0; index < code.length; index += 1) {
                 const ch = code[index];
-                if (ch === '\r') {
-                    continue;
-                }
-                if (ch === '\n') {
-                    flushToken();
-                    result += '\n';
-                    expectName = false;
-                    continue;
-                }
-                if (ch === ' ' || ch === '\t') {
-                    flushToken();
-                    result += ch;
-                    continue;
-                }
                 if (ch === '#') {
                     flushToken();
-                    let comment = '';
-                    let pointer = index;
-                    while (pointer < code.length && code[pointer] !== '\n') {
-                        comment += code[pointer];
-                        pointer += 1;
-                    }
+                    const comment = code.slice(index);
                     result += '<span class="com">' + escapeHtml(comment) + '</span>';
-                    index = pointer - 1;
-                    continue;
+                    break;
                 }
                 if (ch === doubleQuote || ch === singleQuote) {
                     flushToken();
@@ -837,6 +1329,61 @@
             }
             return output;
         }
+
+        async function sendChatMessage() {
+            const content = els.chatInput.value.trim();
+            if (!content) {
+                return;
+            }
+            const model = els.modelName.value.trim();
+            if (!model) {
+                notify("Specify a model name before sending.", "warn");
+                return;
+            }
+
+            const userMessage = { role: "user", content };
+            state.chatHistory.push(userMessage);
+            renderChat();
+            els.chatInput.value = "";
+
+            const assistantPlaceholder = { role: "assistant", content: "Thinking…", pending: true };
+            state.chatHistory.push(assistantPlaceholder);
+            renderChat();
+
+            try {
+                const payloadMessages = state.chatHistory
+                    .filter(message => !message.pending)
+                    .map(message => ({ role: message.role, content: message.content }));
+                const response = await fetch("http://localhost:1234/v1/chat/completions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        model,
+                        messages: payloadMessages,
+                        temperature: 0.3,
+                        max_tokens: 800
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                const answer = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content
+                    ? data.choices[0].message.content
+                    : "No response received.";
+                state.chatHistory[state.chatHistory.length - 1] = { role: "assistant", content: answer };
+                extractLatestCode(answer);
+                renderChat();
+            } catch (error) {
+                console.error("Assistant request failed", error);
+                state.chatHistory[state.chatHistory.length - 1] = { role: "assistant", content: `Error: ${error.message}` };
+                renderChat();
+                notify("Failed to reach LM Studio. Ensure it is running.", "error");
+            }
+        }
+
         async function testAISnippet() {
             if (!state.lastCodeSnippet) {
                 notify('No code snippet available to test.', 'warn');
@@ -853,7 +1400,7 @@
                     code: state.lastCodeSnippet.content,
                     metadata: {
                         requestedAt: new Date().toISOString(),
-                        config: state.config
+                        settings: state.settings
                     }
                 };
                 const response = await fetch(endpoint, {
@@ -875,10 +1422,24 @@
         }
 
         function initEventListeners() {
-            els.aggression.addEventListener('input', handleAggressionChange);
-            els.saveConfig.addEventListener('click', persistConfig);
-            els.loadConfig.addEventListener('click', loadPersistedConfig);
-            els.executeTrade.addEventListener('click', () => simulateTrade());
+            els.aggression.addEventListener('input', event => {
+                els.aggressionDisplay.textContent = event.target.value;
+                captureForm();
+            });
+            els.applyApiBase.addEventListener('click', async () => {
+                const url = els.apiBase.value.trim();
+                if (!url) {
+                    notify('Enter an API base URL', 'warn');
+                    return;
+                }
+                setApiBase(url);
+                await refreshAll();
+                connectWebSocket();
+                schedulePolling();
+            });
+            els.applySettings.addEventListener('click', applySettings);
+            els.refreshData.addEventListener('click', refreshAll);
+            els.executeTrade.addEventListener('click', submitManualOrder);
             els.sendMessage.addEventListener('click', sendChatMessage);
             els.chatInput.addEventListener('keydown', event => {
                 if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
@@ -888,24 +1449,24 @@
             });
             els.testAI.addEventListener('click', testAISnippet);
             window.addEventListener('beforeunload', () => {
-                stopMockStream();
+                if (state.websocket) {
+                    state.websocket.close();
+                }
+                if (state.pollTimer) {
+                    clearInterval(state.pollTimer);
+                }
             });
         }
 
-        function bootstrap() {
-            const raw = localStorage.getItem(LS_KEY);
-            if (raw) {
-                try {
-                    const parsed = JSON.parse(raw);
-                    state.config = { ...state.config, ...parsed };
-                } catch (error) {
-                    console.warn('Could not parse stored config', error);
-                }
-            }
-            refreshForm();
-            startMockStream();
+        async function bootstrap() {
+            setApiBase(localStorage.getItem(LS_KEY_API) || resolveDefaultApiBase());
+            els.apiBase.value = state.apiBase;
+            loadPersistedForm();
             initEventListeners();
-            notify('Mock trading engine initialized.');
+            await refreshAll();
+            connectWebSocket();
+            schedulePolling();
+            notify('Croc-Bot dashboard connected.');
         }
 
         bootstrap();

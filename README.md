@@ -24,7 +24,7 @@ Croc-Bot is a production-grade Python trading stack that combines algorithmic ex
 
 ## Overview
 - **Purpose:** Automated crypto and equities trading across paper and live venues with institutional-grade safety rails.
-- **Core Stack:** FastAPI backend, async Kraken market adapter, Streamlit dashboards, optional AI co-pilot via LM Studio.
+- **Core Stack:** FastAPI backend, async Kraken market adapter, responsive HTML control center, optional AI co-pilot via LM Studio.
 - **Operational Focus:** Smooth Windows/PowerShell experience with virtual environments and reproducible dependency sets.
 
 ## Key Capabilities
@@ -34,7 +34,7 @@ Croc-Bot is a production-grade Python trading stack that combines algorithmic ex
 | **Execution Engines** | Paper simulator and live trading engine with slippage, fee, and market-hours models. |
 | **Risk Controls** | Dynamic aggression ladder, drawdown guards, portfolio exposure caps, Discord alerting. |
 | **Strategy Layer** | Multi-strategy manager (RSI, MACD, momentum, arbitrage, market making) plus AI-assisted signal generation. |
-| **Monitoring** | ORJSON-powered FastAPI API, Streamlit dashboards, WebSocket streaming, structured logs. |
+| **Monitoring** | ORJSON-powered FastAPI API, HTML control center, WebSocket streaming, structured logs. |
 
 ## System Architecture
 ```
@@ -44,8 +44,7 @@ Croc-Bot is a production-grade Python trading stack that combines algorithmic ex
 ├── Strategy manager (paper & live engines, AI assistant)
 ├── Risk manager (dynamic limits + Discord notifications)
 ├── Persistence layer (async SQLite repository)
-├── Real trading dashboard (Streamlit + Plotly)
-└── Simple HTML dashboard (standalone HTTP server)
+└── HTML command center (vanilla JS + WebSocket streaming)
 ```
 
 ## Supported Platforms
@@ -95,8 +94,7 @@ python -m pip install "crippel-trader[unix]"  # uvloop + watchfiles
 | --- | --- | --- |
 | **Backend API** | `python start_croc_bot.py` | Bootstraps a dedicated virtual environment, installs requirements, and serves FastAPI via uvicorn. |
 | **Real Trading Engine** | `python start_real_trading.py` | Starts live trading loop with confirmations, slippage model, and safety checks. |
-| **Real Trading Dashboard** | `streamlit run real_trading_dashboard.py --server.port 12000` | Rich Streamlit UI with Plotly charts, manual trade controls, and live portfolio metrics. |
-| **Simple Dashboard** | `python simple_dashboard.py` | Lightweight HTML dashboard showcasing simulated data (no dependencies beyond stdlib). |
+| **HTML Control Center** | Open `trading_dashboard.html` in a browser | Web UI that streams metrics, adjusts aggression, and submits manual orders. |
 
 Backends expose:
 - REST API: `http://localhost:8000/api`
@@ -140,14 +138,10 @@ Key risk levels (can be adjusted via aggression slider):
 ---
 
 ## Dashboards
-### Real Trading Dashboard
-- Uses **Streamlit**, **Pandas**, **Plotly**.
-- Visualises equity curves, allocation, order books, manual trade input.
-- Served locally on `http://localhost:12000` via `StartBot.bat` or the Streamlit command above.
-
-### Simple Dashboard
-- Pure Python/HTML server for environments without GUI dependencies.
-- Provides simulated prices, portfolio stats, and system heartbeat at `http://localhost:8080` (default).
+### HTML Control Center
+- Single-page application powered by vanilla HTML, CSS, and JavaScript.
+- Streams live portfolio, risk, and strategy metrics from the FastAPI backend via REST and WebSocket.
+- Provides manual order tickets, aggression controls, and LM Studio chat integration — open `trading_dashboard.html` directly in your browser.
 
 ---
 
@@ -168,8 +162,7 @@ Croc-Bot/
 ├── StartBot.bat                     # Full Windows launch orchestrator
 ├── start_croc_bot.py                # Backend bootstrap (venv + uvicorn)
 ├── start_real_trading.py            # Live trading entrypoint
-├── real_trading_dashboard.py        # Streamlit UI
-├── simple_dashboard.py              # Self-contained HTML dashboard
+├── trading_dashboard.html           # Standalone HTML command center
 ├── crippel-trader/
 │   ├── backend/
 │   │   ├── crippel/                 # Application package
@@ -187,7 +180,7 @@ Croc-Bot/
 | --- | --- |
 | **`uvloop` build fails on Windows** | Safe to ignore — dependency is skipped automatically in `requirements.txt`. |
 | **`ModuleNotFoundError` after StartBot** | Run `python -m pip install -r crippel-trader\requirements.txt` manually to inspect logs. |
-| **Streamlit dashboard cannot connect** | Confirm backend is running on `http://localhost:8000` and firewall allows localhost traffic. |
+| **HTML dashboard shows "Offline"** | Ensure `trading_dashboard.html` is pointed at `http://localhost:8000` and the backend is running. |
 | **Discord alerts not delivered** | Ensure webhook URL is correct and notifications are enabled (`CRIPPEL_DISCORD_NOTIFICATIONS_ENABLED=true`). |
 
 ---

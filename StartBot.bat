@@ -14,8 +14,8 @@ echo ================================================
 echo.
 
 REM Check if we're in the right directory
-if not exist "simple_dashboard.py" (
-    echo ❌ Error: simple_dashboard.py not found!
+if not exist "trading_dashboard.html" (
+    echo ❌ Error: trading_dashboard.html not found!
     echo    Make sure you're running this from the Croc-Bot folder
     pause
     exit /b 1
@@ -76,24 +76,23 @@ start "🐊 Real Trading Engine" cmd /k "echo 💰 Real Trading Engine Starting.
 echo ⏳ Waiting for backend to initialize...
 timeout /t 5 /nobreak >nul
 
-echo 📊 Starting Real Trading Dashboard...
-echo    - Live portfolio monitoring with REAL money
-echo    - Real-time market data (bid/ask/spreads)
-echo    - Professional risk management
-echo    - Manual trading interface
+echo 🖥️ Opening HTML Control Center...
+echo    - Unified monitoring across paper and real trading
+echo    - Live metrics and manual order ticket
+echo    - Works in any modern browser
 echo.
 
-REM Start the dashboard in a new window
-start "🐊 Real Trading Dashboard" cmd /k "echo 📊 Real Trading Dashboard Starting... && streamlit run real_trading_dashboard.py --server.port 12000 --server.address 0.0.0.0 --server.allowRunOnSave true"
+REM Launch the HTML dashboard in default browser
+start "🐊 Croc-Bot Dashboard" "trading_dashboard.html"
 
-echo ⏳ Waiting for dashboard to load...
-timeout /t 3 /nobreak >nul
+echo ⏳ Waiting for dashboard to open...
+timeout /t 2 /nobreak >nul
 
 echo.
 echo 🎉 Croc-Bot Trading System is now RUNNING!
 echo ==========================================
 echo.
-echo 📊 Dashboard: http://localhost:12000
+echo 📊 Dashboard: trading_dashboard.html
 echo 🔧 API Backend: http://localhost:8000
 echo.
 echo 💡 What's Running:
@@ -103,9 +102,9 @@ echo    ✅ Real-time market data streaming
 echo    ✅ 10 advanced trading strategies
 echo    ✅ Risk management system
 echo    ✅ Discord notifications
-echo    ✅ Real trading dashboard with live money
+echo    ✅ HTML command center for monitoring and manual control
 echo.
-echo 🌐 Open your browser to: http://localhost:12000
+echo 🌐 If the dashboard did not open automatically, double-click trading_dashboard.html
 echo.
 echo ⚠️  To stop the system:
 echo    - Close this window
