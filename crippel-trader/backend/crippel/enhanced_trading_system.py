@@ -123,13 +123,8 @@ class EnhancedTradingSystem:
                 max_position_size=momentum_capital * 0.1
             )
         
-        if self.config.strategy_allocation.get("ma_crossover", 0) > 0:
-            ma_capital = total_capital * self.config.strategy_allocation["ma_crossover"]
-            strategies["ma_crossover"] = MovingAverageCrossoverStrategy(
-                fast_period=10,
-                slow_period=30,
-                max_position_size=ma_capital * 0.1
-            )
+        # Note: MovingAverageCrossoverStrategy removed - not implemented
+        # Can be added when strategy is implemented
         
         # Advanced strategies
         if self.config.strategy_allocation.get("arbitrage", 0) > 0:
