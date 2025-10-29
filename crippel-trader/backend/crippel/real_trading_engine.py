@@ -86,7 +86,13 @@ class RealTradingEngine:
         self.max_daily_loss_pct = 0.05     # Max 5% daily loss
         
         # Trading statistics
-        self.stats = TradeStat()
+        self.stats = TradeStat(
+            total_trades=0,
+            winning_trades=0,
+            losing_trades=0,
+            fees_paid=0.0,
+            realized_pnl=0.0
+        )
         
         self.logger.info("Real trading engine initialized", 
                         initial_capital=initial_capital,
