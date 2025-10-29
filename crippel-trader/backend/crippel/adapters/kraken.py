@@ -85,25 +85,42 @@ class KrakenAdapter(ExchangeAdapter):
         self._last_heartbeat = time.time()
 
     def _normalize_symbol(self, symbol: str) -> str:
-        """Convert standard symbol format to Kraken format."""
+        """Convert standard symbol format to Kraken format.
+        
+        Handles both crypto pairs (BTC/USD -> XBT/USD) and 
+        xStocks (TSLA -> TSLAx/USD).
+        """
+        # Check crypto first
         if symbol in CRYPTO_SYMBOL_MAP:
             return CRYPTO_SYMBOL_MAP[symbol]
-        elif symbol in STOCK_SYMBOL_MAP:
-            return STOCK_SYMBOL_MAP[symbol]
+        # Check xStocks
+        elif symbol in XSTOCK_SYMBOL_MAP:
+            return XSTOCK_SYMBOL_MAP[symbol]
         else:
-            # Try to handle other formats
-            return symbol.replace("/", "").replace("-", "")
+            # Unknown symbol - log warning
+            self._logger.warning(
+                "Unknown symbol, attempting to use as-is",
+                symbol=symbol,
+                supported_crypto=list(SUPPORTED_CRYPTO),
+                supported_xstocks=list(SUPPORTED_XSTOCKS)
+            )
+            return symbol
     
     def _denormalize_symbol(self, kraken_symbol: str) -> str:
         """Convert Kraken symbol back to standard format."""
-        # Reverse lookup in mappings
+        # Reverse lookup in crypto mappings
         for standard, kraken in CRYPTO_SYMBOL_MAP.items():
             if kraken == kraken_symbol:
                 return standard
-        for standard, kraken in STOCK_SYMBOL_MAP.items():
+        # Reverse lookup in xStock mappings
+        for standard, kraken in XSTOCK_SYMBOL_MAP.items():
             if kraken == kraken_symbol:
                 return standard
         return kraken_symbol
+    
+    def _is_supported_symbol(self, symbol: str) -> bool:
+        """Check if symbol is supported by Kraken."""
+        return symbol in SUPPORTED_CRYPTO or symbol in SUPPORTED_XSTOCKS
 
     async def connect_market_data(self, symbols: list[str]) -> AsyncIterator[PriceTick]:
         """Connect to Kraken WebSocket and stream market data."""
