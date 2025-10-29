@@ -13,18 +13,18 @@ def main():
     
     # Get the project root directory
     project_root = Path(__file__).parent
-    backend_dir = project_root / "crippel-trader" / "backend"
+    backend_dir = project_root
     
     # Check if backend directory exists
+    # Ensure backend directory exists
     if not backend_dir.exists():
-        print("❌ Backend directory not found!")
+        print("❌ Project directory not found!")
         print(f"Expected: {backend_dir}")
         return 1
-    
-    # Change to backend directory
+
     os.chdir(backend_dir)
     print(f"📁 Working directory: {backend_dir}")
-    
+
     # Check if virtual environment should be created
     venv_dir = backend_dir / ".venv"
     if not venv_dir.exists():
@@ -39,7 +39,7 @@ def main():
         python_exe = venv_dir / "bin" / "python"
     
     # Install dependencies if needed
-    requirements_file = project_root / "crippel-trader" / "requirements.txt"
+    requirements_file = project_root / "requirements.txt"
     if requirements_file.exists():
         print("📦 Installing dependencies...")
         try:
@@ -57,18 +57,16 @@ def main():
     
     print("\n🚀 Starting Croc-Bot Trading System...")
     print("📊 Dashboard will be available at:")
-    print("   - API: http://localhost:8000")
-    print("   - Docs: http://localhost:8000/docs")
-    print("   - WebSocket: ws://localhost:8000/ws/stream")
-    print("\n🔔 Discord notifications are enabled")
-    print("💰 Starting in PAPER TRADING mode (no real money)")
+    print("   - UI: http://localhost:8000")
+    print("   - Config: http://localhost:8000/config")
+    print("   - WebSocket: ws://localhost:8000/ws/state")
     print("\n" + "=" * 50)
     
     try:
         # Start the FastAPI server
         subprocess.run([
             str(python_exe), "-m", "uvicorn", 
-            "crippel.app:app",
+            "bot.server:app",
             "--host", "0.0.0.0",
             "--port", "8000",
             "--reload"

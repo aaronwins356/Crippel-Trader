@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Croc-Bot Trading Console</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css" integrity="sha512-oHDEc8Xed3hA6Sn1k+6whhtjfiPgkBC5T9jp+1rssZCvSOqtEtFPd0PfrxGX2YeliYg+6TSdO7V5fg3d9P2ygA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="static/styles.css" />
+</head>
+<body class="theme-light">
+  <div class="app">
+    <header>
+      <h1>🟢 Croc-Bot Trading Console</h1>
+      <div class="header-actions">
+        <button id="theme-toggle" title="Toggle theme">Toggle Theme</button>
+        <button id="export-zip" title="Export logs &amp; config">Export</button>
+      </div>
+    </header>
+    <main>
+      <section class="panel" id="config-panel">
+        <h2>Configuration</h2>
+        <div id="config-errors" class="errors" role="alert" aria-live="assertive"></div>
+        <form id="config-form" autocomplete="off">
+          <fieldset>
+            <legend>Trading</legend>
+            <label>Mode
+              <select id="trading-mode">
+                <option value="paper">Paper</option>
+                <option value="live">Live</option>
+              </select>
+            </label>
+            <label>Capital (USD)
+              <input type="number" id="capital" min="0" step="0.01" required />
+            </label>
+            <label>Aggression (0-1)
+              <input type="number" id="aggression" min="0" max="1" step="0.01" required />
+            </label>
+            <label>Maker Fee
+              <input type="number" id="maker-fee" min="0" max="0.1" step="0.0001" required />
+            </label>
+            <label>Taker Fee
+              <input type="number" id="taker-fee" min="0" max="0.1" step="0.0001" required />
+            </label>
+            <label>Tickers
+              <input type="text" id="tickers" placeholder="XBT/USD,ETH/USD" required />
+            </label>
+          </fieldset>
+          <fieldset>
+            <legend>API Keys</legend>
+            <label>Kraken API Key
+              <input type="password" id="kraken-key" autocomplete="off" />
+            </label>
+            <label>Kraken API Secret
+              <input type="password" id="kraken-secret" autocomplete="off" />
+            </label>
+            <label>Discord Webhook
+              <input type="password" id="discord-webhook" autocomplete="off" />
+            </label>
+          </fieldset>
+          <fieldset>
+            <legend>LLM</legend>
+            <label>Endpoint
+              <input type="url" id="llm-endpoint" required />
+            </label>
+            <label>Model ID
+              <input type="text" id="llm-model" required />
+            </label>
+            <label>Temperature
+              <input type="number" id="llm-temperature" min="0" max="1" step="0.05" />
+            </label>
+            <label>Max Tokens
+              <input type="number" id="llm-max-tokens" min="1" step="1" />
+            </label>
+          </fieldset>
+          <fieldset>
+            <legend>Runtime</legend>
+            <label>Refresh Interval (s)
+              <input type="number" id="refresh-interval" min="0.5" step="0.5" />
+            </label>
+            <label>Read Only Mode
+              <input type="checkbox" id="read-only" />
+            </label>
+          </fieldset>
+          <button type="submit">Save (Preview Only)</button>
+        </form>
+      </section>
+
+      <section class="panel" id="chart-panel">
+        <h2>Kraken Price Feed</h2>
+        <div class="chart-controls">
+          <label for="pair-selector">Pair</label>
+          <select id="pair-selector"></select>
+          <div class="order-book">
+            <span id="bid"></span>
+            <span id="ask"></span>
+            <span id="last-trade"></span>
+          </div>
+        </div>
+        <canvas id="price-chart" width="800" height="300" role="img" aria-label="Price chart"></canvas>
+        <div id="ws-status" class="status">Connecting…</div>
+      </section>
+
+      <section class="panel" id="trade-panel">
+        <h2>Trade Execution</h2>
+        <div class="trade-status">
+          <div>Balance: <span id="balance">0</span></div>
+          <div>Daily PnL: <span id="pnl">0</span></div>
+          <div>Total Fees: <span id="fees">0</span></div>
+        </div>
+        <table id="positions-table" aria-label="Open positions">
+          <thead>
+            <tr><th>Symbol</th><th>Size</th><th>Avg Price</th><th>Unrealized PnL</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <table id="orders-table" aria-label="Open orders">
+          <thead>
+            <tr><th>ID</th><th>Symbol</th><th>Side</th><th>Size</th><th>Price</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div class="trade-form">
+          <input type="text" id="trade-symbol" placeholder="XBT/USD" />
+          <select id="trade-side">
+            <option value="buy">Buy</option>
+            <option value="sell">Sell</option>
+          </select>
+          <input type="number" id="trade-size" min="0" step="0.0001" placeholder="Size" />
+          <input type="number" id="trade-price" min="0" step="0.01" placeholder="Price" />
+          <button id="execute-trade">Execute</button>
+        </div>
+        <pre id="trade-errors" class="errors" aria-live="polite"></pre>
+        <div class="log-container">
+          <h3>Trade Log</h3>
+          <ul id="trade-log"></ul>
+        </div>
+      </section>
+
+      <section class="panel" id="assistant-panel">
+        <h2>LLM Assistant</h2>
+        <div class="chat-window" id="chat-window"></div>
+        <textarea id="chat-input" rows="4" placeholder="Ask the assistant or paste code snippets…"></textarea>
+        <div class="chat-actions">
+          <button id="send-chat">Send</button>
+          <button id="preview-diff">Preview Diff</button>
+        </div>
+        <pre id="diff-output" aria-live="polite"></pre>
+      </section>
+    </main>
+  </div>
+  <script src="main.js" type="module"></script>
+</body>
+</html>
