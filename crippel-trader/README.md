@@ -13,7 +13,7 @@
 - **📊 Paper & Live Trading Modes** - Safe paper trading with real market data, or live trading with real money
 - **🔐 Safety First** - Multi-layer safety checks, explicit confirmations, and countdown for live trading
 - **💹 Real-Time Market Data** - Kraken WebSocket integration for crypto and xStocks (tokenized equities)
-- **🤖 AI Strategy Generation** - OpenAI-powered strategy creation and optimization
+- **🤖 AI Strategy Generation** - Offline local LLM-powered strategy creation and optimization
 - **⚡ High-Performance** - Async architecture with sub-second tick processing
 - **📈 Risk Management** - Dynamic position sizing, drawdown limits, and exposure controls
 - **🔔 Discord Notifications** - Real-time alerts for trades, performance, and system events
@@ -497,7 +497,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 - Built with [FastAPI](https://fastapi.tiangolo.com/)
 - Market data from [Kraken](https://www.kraken.com/)
-- AI powered by [OpenAI](https://openai.com/)
+- AI powered by [llama.cpp](https://github.com/ggerganov/llama.cpp) or local [Transformers](https://huggingface.co/docs/transformers/index)
 - Inspired by professional trading systems
 
 ---

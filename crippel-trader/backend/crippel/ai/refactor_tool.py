@@ -15,8 +15,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, Sequence
 
+from ..ai_local import AI_BACKEND, chat as local_chat, get_backend_descriptor
 from ..config import get_settings
-from .client import LMStudioClient
 
 _LOGGER_NAME = "ai_refactor"
 _STATE_VERSION = 1
@@ -264,13 +264,13 @@ class RefactorAssistant:
         self._logger = logging.getLogger(_LOGGER_NAME)
         self._configure_logging()
         self._logger.debug("initializing refactor assistant", root=str(self._project_root))
+        self._logger.info(
+            "Using local LLM backend %s (%s)",
+            AI_BACKEND,
+            get_backend_descriptor(),
+        )
         self._scanner = CodeScanner(self._project_root, targets)
         self._state = StateManager(self._project_root / ".cache" / "ai_refactor_state.json")
-        self._client = LMStudioClient(
-            base_url=str(settings.lmstudio_api_base),
-            model=settings.lmstudio_model,
-            timeout=settings.ai_request_timeout,
-        )
         self._batch = batch
         self._force = force
         self._test_cmd = list(test_cmd) if test_cmd else None
@@ -291,7 +291,6 @@ class RefactorAssistant:
         try:
             await self._process_entities()
         finally:
-            await self._client.aclose()
             self._state.save()
             if self._applied_changes and self._test_cmd:
                 self._run_tests()
@@ -343,7 +342,13 @@ class RefactorAssistant:
             },
         ]
         try:
-            return await self._client.chat(messages, temperature=0.2)
+            return await asyncio.to_thread(
+                local_chat,
+                messages,
+                temperature=0.2,
+                max_tokens=900,
+                top_p=0.9,
+            )
         except Exception as exc:  # pragma: no cover - defensive logging
             self._logger.error("Model request failed: %s", exc)
             return None

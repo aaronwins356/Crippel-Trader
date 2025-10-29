@@ -542,10 +542,10 @@
         </section>
 
         <section class="panel chat-panel">
-            <h2>AI Assistant (LM Studio)</h2>
+            <h2>AI Assistant (Local LLM)</h2>
             <label style="margin-bottom: 0.75rem; font-size: 0.85rem; color: #94a3b8;">
-                Model Name
-                <input type="text" id="model-name" value="phi-3.5-mini" placeholder="Model identifier registered in LM Studio" />
+                System Prompt
+                <input type="text" id="model-name" value="You are Croc-Bot's concise co-pilot." placeholder="Optional system instruction sent with each chat" />
             </label>
             <div class="chat-history" id="chat-history"></div>
             <div class="chat-footer">
@@ -1335,11 +1335,11 @@
             if (!content) {
                 return;
             }
-            const model = els.modelName.value.trim();
-            if (!model) {
-                notify("Specify a model name before sending.", "warn");
+            if (!state.apiBase) {
+                notify("Set the API base URL before chatting.", "warn");
                 return;
             }
+            const systemPrompt = els.modelName.value.trim();
 
             const userMessage = { role: "user", content };
             state.chatHistory.push(userMessage);
@@ -1351,27 +1351,24 @@
             renderChat();
 
             try {
-                const payloadMessages = state.chatHistory
+                const historyMessages = state.chatHistory
                     .filter(message => !message.pending)
                     .map(message => ({ role: message.role, content: message.content }));
-                const response = await fetch("http://localhost:1234/v1/chat/completions", {
+                const messages = [
+                    ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
+                    ...historyMessages
+                ];
+                const data = await fetchJson("/api/ai/chat", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        model,
-                        messages: payloadMessages,
+                        messages,
                         temperature: 0.3,
-                        max_tokens: 800
+                        max_tokens: 800,
+                        top_p: 0.9
                     })
                 });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
-                const data = await response.json();
-                const answer = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content
-                    ? data.choices[0].message.content
+                const answer = typeof data?.message === "string" && data.message.trim()
+                    ? data.message.trim()
                     : "No response received.";
                 state.chatHistory[state.chatHistory.length - 1] = { role: "assistant", content: answer };
                 extractLatestCode(answer);
@@ -1380,7 +1377,7 @@
                 console.error("Assistant request failed", error);
                 state.chatHistory[state.chatHistory.length - 1] = { role: "assistant", content: `Error: ${error.message}` };
                 renderChat();
-                notify("Failed to reach LM Studio. Ensure it is running.", "error");
+                notify("Failed to reach the local LLM backend.", "error");
             }
         }
 

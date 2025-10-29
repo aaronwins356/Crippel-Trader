@@ -1,4 +1,9 @@
--e 
 # Environment files
 *.env
 *.env.*
+
+# Local LLM weights
+models/
+*.gguf
+models/**/*.safetensors
+models/**/*.bin

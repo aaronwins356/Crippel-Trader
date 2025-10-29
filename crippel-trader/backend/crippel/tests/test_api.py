@@ -22,3 +22,10 @@ def test_assets_endpoint() -> None:
     assert response.status_code == 200
     assets = response.json()
     assert any(asset["symbol"] == "XBT/USD" for asset in assets)
+
+
+def test_chat_endpoint_rejects_empty_payload() -> None:
+    app = create_app()
+    with TestClient(app) as client:
+        response = client.post("/api/ai/chat", json={"messages": []})
+    assert response.status_code == 400

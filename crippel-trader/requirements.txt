@@ -23,3 +23,6 @@ requests>=2.31
 # Optional optimisations (automatically skipped on Windows)
 uvloop>=0.19 ; platform_system != "Windows"
 watchfiles>=0.21 ; platform_system != "Windows"
+
+# --- Optional local LLM extras ---
+# Install crippel-trader/requirements-localllm.txt to enable offline models.

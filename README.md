@@ -10,7 +10,7 @@ Croc-Bot is a production-minded, AI-assisted trading platform that lets you rese
 - 💸 **Dual Trading Modes** – Flip between real-money execution and a fully isolated paper simulator without touching the core code.
 - 📡 **Kraken WebSocket Market Feed** – Stream tick-level prices and a live order book via Kraken's WebSocket API for immediate market context.
 - 🛡️ **Built-In Risk Management** – Enforce capital allocations, per-trade stop-losses, trailing drawdown guards, and fee-aware position sizing before any order leaves the nest.
-- 🤖 **Local LLM Assistant** – Plug in LM Studio (or any OpenAI-compatible local endpoint) with models like Qwen3 to review strategy code, surface refactors, or explain risk reports.
+- 🤖 **Local LLM Assistant** – Run fully offline via llama.cpp or Hugging Face Transformers to review strategy code, surface refactors, or explain risk reports—no external HTTP calls required.
 - 🖥️ **Zero-Backend Frontend** – A standalone HTML/JavaScript command center you can open directly in your browser—no Node, no Flask, no localhost server required.
 - 🧾 **Config-Driven Everything** – Fine-tune behavior through a single `config.json`, version-controlled alongside your strategies.
 
@@ -43,9 +43,18 @@ Open `trading_dashboard.html` directly in your browser:
 - 🧪 Or simply drag-and-drop the file into any modern browser.
 
 ### 5️⃣ Chat with the AI Co-Pilot
-1. Launch LM Studio (or your preferred local server) and load a Qwen3-compatible model.
-2. Update `llm.endpoint` and `llm.model` in `config.json` to match the server.
-3. Use the "AI Assistant" panel in the dashboard to request code reviews, generate new strategies, or draft risk reports. Ask it to improve specific files (e.g., `bot/strategy.py`) or tighten risk constraints—it can propose diffs you can apply manually.
+1. Install the optional local LLM extras: `python -m pip install -r crippel-trader/requirements-localllm.txt` (install PyTorch separately if you plan to use the Transformers backend).
+2. Drop your model weights under `models/local/` (e.g., `models/local/llama3-instruct.Q4_K_M.gguf` for llama.cpp or a Transformers directory for Qwen).
+3. Export the runtime variables before launching the backend:
+   ```bash
+   set AI_BACKEND=llamacpp           # on PowerShell use: $Env:AI_BACKEND="llamacpp"
+   set LOCAL_GGUF_MODEL=models/local/llama3-instruct.Q4_K_M.gguf
+   # For Transformers instead:
+   # set AI_BACKEND=hf
+   # set LOCAL_HF_MODEL=models/local/Qwen2.5-7B-Instruct
+   ```
+4. Run `python utils/ai_smoke.py` and verify it prints `CROCBOT READY`.
+5. Use the "AI Assistant" panel in the dashboard; it now calls the backend's `/api/ai/chat` endpoint which proxies to the in-process model.
 
 ## 🧭 Config Reference
 `config.json` keeps Croc-Bot deterministic and reproducible. Each top-level key controls a focused part of the runtime:
@@ -54,11 +63,26 @@ Open `trading_dashboard.html` directly in your browser:
 | --- | --- | --- |
 | `trading` | Primary execution behaviour. | `mode` ("real" or "paper"), `initial_capital`, `aggression` (1–10 risk slider), `symbols` (Kraken tickers to monitor/trade). |
 | `api` | Credentials and outbound notifications. | `kraken_key`, `kraken_secret` (live trading only), `discord_webhook` for optional alerting. |
-| `llm` | Local AI assistant wiring. | `endpoint` (http URL for LM Studio/OpenAI-compatible server), `model` (e.g. `qwen/qwen3-coder-30b`), `temperature` (0.0–1.0 creativity dial). |
+| `llm` | (Deprecated) legacy LM Studio wiring. Prefer env vars `AI_BACKEND`, `LOCAL_GGUF_MODEL`, `LOCAL_HF_MODEL`. | `endpoint` (http URL for historical LM Studio usage), `model`, `temperature`. |
 | `fees` | Exchange fee assumptions baked into PnL and risk maths. | `maker`, `taker` expressed as decimals (0.001 = 0.10%). |
 | `runtime` | Housekeeping for logging and safeguards. | `log_level` (DEBUG/INFO/WARN/ERROR), `read_only_mode` to block order transmission while still streaming data. |
 
 > 💡 **Tip:** Commit `config.json` templates to version control, but store live API keys in a `.env` or secret manager. Croc-Bot reads overrides from environment variables if present.
+
+### Offline Local LLM Configuration
+
+The trading backend speaks directly to on-device models—no HTTP proxy required. Install the optional dependencies from `crippel-trader/requirements-localllm.txt` and then set the following environment variables before launching the backend:
+
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `AI_BACKEND` | Selects the inference stack (`llamacpp` or `hf`). | `llamacpp` |
+| `LOCAL_GGUF_MODEL` | Path to the GGUF file for llama.cpp. | `models/local/llama3-instruct.Q4_K_M.gguf` |
+| `LOCAL_CTX` | Context window for llama.cpp models. | `8192` |
+| `LOCAL_THREADS` | CPU worker threads for llama.cpp. | `os.cpu_count()` |
+| `LOCAL_GPU_LAYERS` | llama.cpp GPU offload layers (`0` for CPU). | `0` |
+| `LOCAL_HF_MODEL` | Directory containing a Transformers model. | `models/local/Qwen2.5-7B-Instruct` |
+
+Run `python utils/ai_smoke.py` after configuring the environment—if you see `CROCBOT READY` your model is wired correctly. The dashboard's chat widget calls the backend route `POST /api/ai/chat`, which in turn invokes the local model.
 
 ## 📈 Operating Modes
 - 🧪 **Paper Trading** – Default mode. Simulates fills using live order book snapshots while respecting your fee model and risk guardrails.
@@ -74,7 +98,7 @@ Switch modes by toggling `trading.mode` between `"paper"` and `"real"`.
 ## 🧰 Troubleshooting Tips
 - ❌ **Dashboard says "offline"?** Ensure the trading process is running and the WebSocket endpoint configured in the frontend is reachable.
 - 🔑 **Live trading fails to authenticate?** Double-check `api.kraken_key`/`api.kraken_secret` and confirm the API key has trading permissions.
-- 🤖 **Assistant not responding?** Verify the local model server is up, accessible, and the `llm.endpoint` matches the exposed port.
+- 🤖 **Assistant not responding?** Ensure the backend has access to your local weights, the `AI_BACKEND` env matches the model type, and the dashboard's API base URL points to the running FastAPI instance.
 
 ## 📜 License
 This project is released under the MIT License. See [`LICENSE`](LICENSE) for details.

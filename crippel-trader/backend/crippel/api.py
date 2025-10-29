@@ -1,13 +1,15 @@
 """Enhanced HTTP API endpoints for the trading system."""
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from .ai_local import chat as local_chat
 from .config import get_settings as get_app_settings
 from .models.enums import Mode
 from .models.core import OrderSide, OrderType
@@ -98,6 +100,18 @@ class OrderRequest(BaseModel):
     type: OrderType
     size: float
     price: Optional[float] = None
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: List[ChatMessage]
+    temperature: Optional[float] = 0.2
+    max_tokens: Optional[int] = 512
+    top_p: Optional[float] = 0.95
 
 
 def get_runtime(request: Request) -> EngineRuntime:
@@ -829,3 +843,28 @@ async def get_risk_metrics() -> JSONResponse:
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get risk metrics: {str(e)}")
+@router.post("/ai/chat")
+async def chat_completion(request: ChatRequest) -> Dict[str, str]:
+    """Proxy chat completion requests to the local LLM backend."""
+
+    messages = [message.model_dump() for message in request.messages]
+    if not messages:
+        raise HTTPException(status_code=400, detail="messages must not be empty")
+
+    temperature = request.temperature if request.temperature is not None else 0.2
+    max_tokens = request.max_tokens if request.max_tokens is not None else 512
+    top_p = request.top_p if request.top_p is not None else 0.95
+
+    try:
+        text = await asyncio.to_thread(
+            local_chat,
+            messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            top_p=top_p,
+        )
+    except Exception as exc:  # pragma: no cover - runtime guard
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    return {"message": text}
+
