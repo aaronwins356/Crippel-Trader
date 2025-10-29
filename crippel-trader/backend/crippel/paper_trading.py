@@ -224,8 +224,8 @@ class PaperTradingEngine:
         """Execute a fill for an order."""
         # Determine if this is a maker or taker fill
         is_maker = order.type == OrderType.LIMIT
-        fee_bps = self.settings.maker_fee_bps if is_maker else self.settings.taker_fee_bps
-        fee = order.size * fill_price * (fee_bps / 10000)
+        trade_value = order.size * fill_price
+        fee = self.stats.apply_fee(trade_value, is_maker)
         
         # Create fill
         fill = Fill(
@@ -254,14 +254,7 @@ class PaperTradingEngine:
         pnl_change = self.positions[order.symbol].realized_pnl - old_realized_pnl
         
         # Update statistics
-        self.stats.total_trades += 1
-        self.stats.fees_paid += fee
-        self.stats.realized_pnl += pnl_change
-        
-        if pnl_change > 0:
-            self.stats.winning_trades += 1
-        elif pnl_change < 0:
-            self.stats.losing_trades += 1
+        self.stats.record_trade(realized_pnl=pnl_change, is_winning=pnl_change >= 0)
         
         # Store fill
         self.filled_orders.append(fill)

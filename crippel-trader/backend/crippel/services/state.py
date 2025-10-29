@@ -62,15 +62,10 @@ class StateService:
             self.state.portfolio.set_mode(mode)
         return self.state.mode_state
 
-    def record_trade(self, pnl: float, fee: float) -> None:
+    def record_trade(self, pnl: float, trade_value: float, is_maker: bool) -> None:
         stats = self.state.stats
-        stats.total_trades += 1
-        if pnl >= 0:
-            stats.winning_trades += 1
-        else:
-            stats.losing_trades += 1
-        stats.realized_pnl += pnl
-        stats.fees_paid += fee
+        stats.apply_fee(trade_value, is_maker)
+        stats.record_trade(realized_pnl=pnl, is_winning=pnl >= 0)
 
     def snapshot(self, ts: datetime) -> PortfolioState:
         return self.state.portfolio.snapshot(ts)
