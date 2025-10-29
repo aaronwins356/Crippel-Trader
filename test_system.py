@@ -9,7 +9,7 @@ from datetime import datetime
 # Add the backend to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'crippel-trader', 'backend'))
 
-async def test_system():
+async def _run_system_check() -> bool:
     """Test the core trading system components."""
     print("🐊 Testing Croc-Bot Trading System")
     print("=" * 50)
@@ -99,6 +99,11 @@ async def test_system():
         traceback.print_exc()
         return False
 
+
+def test_system() -> None:
+    assert asyncio.run(_run_system_check()) is True
+
+
 if __name__ == "__main__":
-    success = asyncio.run(test_system())
+    success = asyncio.run(_run_system_check())
     sys.exit(0 if success else 1)

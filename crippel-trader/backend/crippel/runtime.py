@@ -8,6 +8,7 @@ from typing import Any
 
 from fastapi import FastAPI
 
+from .ai import AIAssistant
 from .config import get_settings
 from .engine.clock import EngineClock
 from .engine.fills import FillHistory, PaperFillModel
@@ -49,12 +50,19 @@ class EngineRuntime:
         self._signal_queue: asyncio.Queue = asyncio.Queue(maxsize=1024)
         self._stop = asyncio.Event()
         self._rng = random.Random(42)
+        self.ai_assistant = AIAssistant(
+            state_service=self.state_service,
+            strategy_engine=self.strategy_engine,
+            market_engine=self.market_engine,
+            signal_queue=self._signal_queue,
+        )
 
     async def startup(self, app: FastAPI) -> None:
         app.state.runtime = self
         await self.repository.initialize()
         self.logger.info("runtime initialized")
         self._stop.clear()
+        await self.ai_assistant.start()
         self._tasks = [
             asyncio.create_task(self._market_task(), name="market_task"),
             asyncio.create_task(self._strategy_task(), name="strategy_task"),
@@ -68,6 +76,7 @@ class EngineRuntime:
             task.cancel()
         await asyncio.gather(*self._tasks, return_exceptions=True)
         self._tasks.clear()
+        await self.ai_assistant.shutdown()
         self.logger.info("runtime stopped")
 
     async def _market_task(self) -> None:
@@ -83,6 +92,8 @@ class EngineRuntime:
             tick = PriceTick(symbol=symbol, price=price, volume=volume, ts=ts)
             self._last_tick[symbol] = tick
             await self.market_engine.ingest(tick)
+            self.portfolio.mark_price(symbol, price)
+            self.ai_assistant.record_market_tick(tick)
         self.clock.stop()
 
     async def _strategy_task(self) -> None:
