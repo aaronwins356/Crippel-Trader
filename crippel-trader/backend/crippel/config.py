@@ -76,7 +76,12 @@ class AppSettings(BaseSettings):
     cors_origins: list[str] = Field(default=["http://localhost:3000", "http://localhost:12000", "http://localhost:12001"])
     api_rate_limit: int = Field(default=100, ge=1)  # requests per minute
 
-    model_config = SettingsConfigDict(env_file=".env", env_prefix="CRIPPEL_", case_sensitive=False)
+    model_config = SettingsConfigDict(
+        env_file=".env", 
+        env_prefix="CRIPPEL_", 
+        case_sensitive=False,
+        extra="ignore"
+    )
 
     @property
     def project_root(self) -> Path:
