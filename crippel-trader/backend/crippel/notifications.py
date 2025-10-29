@@ -360,7 +360,18 @@ class NotificationService:
         )
     
     async def close(self):
-        """Close the HTTP client."""
+        """Close the HTTP client and stop background tasks."""
+        # Cancel notification processor
+        if self._notification_task and not self._notification_task.done():
+            self._notification_task.cancel()
+            try:
+                await self._notification_task
+            except asyncio.CancelledError:
+                pass
+        
+        # Flush any remaining startup messages
+        await self.flush_startup_messages()
+        
         await self.client.aclose()
 
 
