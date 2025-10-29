@@ -3,33 +3,99 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Iterable, Sequence
 
-KRAKEN_PAIRS = {
-    "XBT/USD",
-    "ETH/USD",
-    "ADA/USD",
-    "SOL/USD",
-    "XRP/USD",
-    "DOT/USD",
-    "LTC/USD",
-    "XBT/EUR",
-    "ETH/EUR",
-}
+import httpx
+
+from utils.kraken import normalize_symbol
 
 
 @dataclass(frozen=True)
 class ValidationError:
+    """Represents a single validation error message."""
+
     field: str
     message: str
 
 
-def validate_pairs(pairs: Iterable[str]) -> list[ValidationError]:
+_KRAKEN_REST_ENDPOINT = "https://api.kraken.com/0/public/AssetPairs"
+_KRAKEN_FALLBACK = {
+    "XBT/USD",
+    "XBT/EUR",
+    "ETH/USD",
+    "ETH/EUR",
+    "SOL/USD",
+    "ADA/USD",
+    "XRP/USD",
+    "DOT/USD",
+    "LTC/USD",
+}
+
+
+@lru_cache(maxsize=1)
+def _load_remote_pairs() -> set[str]:
+    """Fetch supported Kraken pairs using the public REST endpoint.
+
+    Falls back to a conservative static set if the request fails.
+    """
+
+    try:
+        response = httpx.get(_KRAKEN_REST_ENDPOINT, timeout=5.0)
+        response.raise_for_status()
+        payload = response.json()
+    except Exception:
+        return set(_KRAKEN_FALLBACK)
+
+    result = payload.get("result", {})
+    discovered: set[str] = set()
+    for details in result.values():
+        if not isinstance(details, dict):
+            continue
+        ws_name = details.get("wsname")
+        if not isinstance(ws_name, str):
+            continue
+        discovered.add(normalize_symbol(ws_name))
+
+    return discovered or set(_KRAKEN_FALLBACK)
+
+
+def validate_symbols(pairs: Iterable[str]) -> tuple[list[str], list[ValidationError]]:
+    """Validate and normalise user provided trading symbols.
+
+    Parameters
+    ----------
+    pairs:
+        Iterable of user supplied pair strings (e.g. ``"BTC/USD"``).
+
+    Returns
+    -------
+    tuple[list[str], list[ValidationError]]
+        A tuple of the validated, normalised symbols and any validation errors.
+    """
+
+    allowed_pairs = _load_remote_pairs()
+    normalized: list[str] = []
     errors: list[ValidationError] = []
-    for pair in pairs:
-        if pair not in KRAKEN_PAIRS:
-            errors.append(ValidationError("trading.pairs", f"Unsupported Kraken pair: {pair}"))
-    return errors
+
+    for raw_pair in pairs:
+        pair = normalize_symbol(raw_pair)
+        if pair not in allowed_pairs:
+            errors.append(ValidationError("trading.symbols", f"Unsupported Kraken pair: {raw_pair}"))
+            continue
+        normalized.append(pair)
+
+    # Ensure symbols are unique to prevent over-allocation of capital across duplicates.
+    seen: set[str] = set()
+    unique_normalized: list[str] = []
+    for pair in normalized:
+        if pair in seen:
+            errors.append(ValidationError("trading.symbols", f"Duplicate symbol: {pair}"))
+            continue
+        seen.add(pair)
+        unique_normalized.append(pair)
+
+    return unique_normalized, errors
 
 
 def validate_fee(value: float, field: str) -> list[ValidationError]:
@@ -38,7 +104,7 @@ def validate_fee(value: float, field: str) -> list[ValidationError]:
     return []
 
 
-def validate_positive(value: float, field: str, allow_zero: bool = False) -> list[ValidationError]:
+def validate_positive(value: float, field: str, *, allow_zero: bool = False) -> list[ValidationError]:
     if allow_zero and value == 0:
         return []
     if value <= 0:

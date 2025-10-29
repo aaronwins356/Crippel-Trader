@@ -2,96 +2,120 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Literal
 
-import json
-
-from pydantic import BaseModel, Field, ValidationError as PydanticValidationError, validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError as PydanticValidationError,
+    field_validator,
+    model_validator,
+)
 
 from utils.validation import (
     ValidationError,
     collect_errors,
-    validate_bounds,
     validate_fee,
-    validate_pairs,
     validate_positive,
+    validate_symbols,
 )
 
 
 class TradingConfig(BaseModel):
-    mode: str = Field(regex="^(paper|live)$")
-    capital: float
-    aggression: float
-    pairs: list[str]
-    max_position_pct: float
-    max_daily_loss_pct: float
+    """Trading configuration extracted from config.json."""
 
-    @validator("capital")
-    def check_capital(cls, value: float) -> float:
-        if value <= 0:
-            raise ValueError("Capital must be positive.")
-        return value
+    model_config = ConfigDict(extra="forbid")
 
-    @validator("aggression")
-    def check_aggression(cls, value: float) -> float:
-        if not 0 < value <= 1:
-            raise ValueError("Aggression must be between 0 and 1.")
-        return value
+    mode: Literal["paper", "live"] = Field(pattern="^(paper|live)$")
+    initial_capital: float = Field(gt=0)
+    aggression: int = Field(ge=1, le=10)
+    symbols: list[str] = Field(min_length=1)
+
+    @field_validator("symbols")
+    @classmethod
+    def _strip_symbols(cls, value: list[str]) -> list[str]:
+        return [symbol.strip() for symbol in value if symbol and symbol.strip()]
 
 
 class APIConfig(BaseModel):
+    """API credential configuration."""
+
+    model_config = ConfigDict(extra="allow")
+
     kraken_key: str
     kraken_secret: str
-    discord_webhook: str
+    discord_webhook: str = ""
 
 
 class LLMConfig(BaseModel):
-    endpoint: str = Field(default="http://127.0.0.1:1234/v1/chat/completions")
+    """LLM connection configuration."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    endpoint: str = Field(default="http://127.0.0.1:1234")
     model: str
-    temperature: float = 0.2
-    max_tokens: int = 1024
+    temperature: float = Field(default=0.2)
 
-    @validator("temperature")
-    def check_temperature(cls, value: float) -> float:
-        if not 0 <= value <= 1:
+    @field_validator("temperature")
+    @classmethod
+    def _validate_temperature(cls, value: float) -> float:
+        if not 0.0 <= value <= 1.0:
             raise ValueError("Temperature must be between 0 and 1.")
-        return value
-
-    @validator("max_tokens")
-    def check_tokens(cls, value: int) -> int:
-        if value <= 0:
-            raise ValueError("max_tokens must be positive")
         return value
 
 
 class FeesConfig(BaseModel):
+    """Exchange fee configuration."""
+
+    model_config = ConfigDict(extra="forbid")
+
     maker: float
     taker: float
 
 
 class RuntimeConfig(BaseModel):
-    cache_dir: str
+    """Runtime tuning parameters."""
+
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
     log_level: str = Field(default="INFO")
+    read_only_mode: bool = Field(default=True)
     refresh_interval: float = Field(default=2.0)
-    read_only: bool = Field(default=True)
     log_retention: int = Field(default=7)
 
-    @validator("refresh_interval")
-    def check_refresh_interval(cls, value: float) -> float:
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_aliases(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        data = dict(values) if isinstance(values, dict) else values
+        if isinstance(data, dict):
+            if "read_only" in data and "read_only_mode" not in data:
+                data["read_only_mode"] = data.pop("read_only")
+            data.setdefault("refresh_interval", 2.0)
+            data.setdefault("log_retention", 7)
+        return data
+
+    @field_validator("refresh_interval")
+    @classmethod
+    def _validate_refresh_interval(cls, value: float) -> float:
         if value <= 0:
             raise ValueError("refresh_interval must be positive")
         return value
 
-    @validator("log_retention")
-    def check_retention(cls, value: int) -> int:
+    @field_validator("log_retention")
+    @classmethod
+    def _validate_retention(cls, value: int) -> int:
         if value <= 0:
             raise ValueError("log_retention must be positive")
         return value
 
 
 class AppConfig(BaseModel):
+    """Root configuration model."""
+
     trading: TradingConfig
     api: APIConfig
     llm: LLMConfig
@@ -115,17 +139,15 @@ def load_config(path: Path) -> ConfigResult:
         return ConfigResult(config=None, errors=[ValidationError("config", f"Invalid JSON: {exc}")])
 
     try:
-        config = AppConfig.parse_obj(raw)
+        config = AppConfig.model_validate(raw)
     except PydanticValidationError as exc:
-        errors = [ValidationError("/".join(map(str, err['loc'])), err['msg']) for err in exc.errors()]
+        errors = [ValidationError("/".join(str(loc) for loc in err["loc"]), err["msg"]) for err in exc.errors()]
         return ConfigResult(config=None, errors=errors)
 
+    normalized_symbols, symbol_errors = validate_symbols(config.trading.symbols)
     errors = collect_errors(
-        validate_pairs(config.trading.pairs),
-        validate_positive(config.trading.capital, "trading.capital"),
-        validate_bounds(config.trading.aggression, "trading.aggression", 0.0, 1.0),
-        validate_bounds(config.trading.max_position_pct, "trading.max_position_pct", 0.0, 1.0),
-        validate_bounds(config.trading.max_daily_loss_pct, "trading.max_daily_loss_pct", 0.0, 1.0),
+        symbol_errors,
+        validate_positive(config.trading.initial_capital, "trading.initial_capital"),
         validate_fee(config.fees.maker, "fees.maker"),
         validate_fee(config.fees.taker, "fees.taker"),
     )
@@ -133,11 +155,17 @@ def load_config(path: Path) -> ConfigResult:
     if errors:
         return ConfigResult(config=None, errors=errors)
 
+    config = config.model_copy(
+        update={
+            "trading": config.trading.model_copy(update={"symbols": normalized_symbols})
+        }
+    )
+
     return ConfigResult(config=config, errors=[])
 
 
 def redact_config(config: AppConfig) -> Dict[str, Any]:
-    data = json.loads(config.json())
+    data = config.model_dump()
     data["api"]["kraken_key"] = "***"
     data["api"]["kraken_secret"] = "***"
     if data["api"].get("discord_webhook"):

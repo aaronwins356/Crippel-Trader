@@ -1,11 +1,9 @@
 {
   "trading": {
     "mode": "paper",
-    "capital": 10000.0,
-    "aggression": 0.5,
-    "pairs": ["XBT/USD", "ETH/USD"],
-    "max_position_pct": 0.2,
-    "max_daily_loss_pct": 0.05
+    "initial_capital": 1000.0,
+    "aggression": 5,
+    "symbols": ["XBT/USD", "ETH/USD", "SOL/USD"]
   },
   "api": {
     "kraken_key": "",
@@ -13,20 +11,16 @@
     "discord_webhook": ""
   },
   "llm": {
-    "endpoint": "http://127.0.0.1:1234/v1/chat/completions",
+    "endpoint": "http://127.0.0.1:1234",
     "model": "qwen/qwen3-coder-30b",
-    "temperature": 0.2,
-    "max_tokens": 1024
+    "temperature": 0.2
   },
   "fees": {
     "maker": 0.0016,
     "taker": 0.0026
   },
   "runtime": {
-    "cache_dir": "./.cache",
     "log_level": "INFO",
-    "refresh_interval": 2.0,
-    "read_only": true,
-    "log_retention": 7
+    "read_only_mode": false
   }
 }
