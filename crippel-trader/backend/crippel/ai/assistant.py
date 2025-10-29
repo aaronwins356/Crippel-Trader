@@ -8,6 +8,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Any
 
+from ..ai_local import AI_BACKEND, chat as local_chat, get_backend_descriptor
 from ..config import get_settings
 from ..engine.market import MarketDataEngine
 from ..engine.strategy import StrategyEngine
@@ -15,14 +16,13 @@ from ..logging import get_logger
 from ..models.core import PriceTick, Signal
 from ..models.enums import SignalType
 from ..services.state import StateService
-from .client import LMStudioClient
 from .decision_log import DecisionLogger
 from .research import WebResearcher
 from .schemas import AssistantDecision, ResearchItem, TradeRecommendation
 
 
 class AIAssistant:
-    """Coordinates strategy generation, research, and trade execution via LM Studio."""
+    """Coordinates strategy generation, research, and trade execution via on-device models."""
 
     def __init__(
         self,
@@ -41,11 +41,6 @@ class AIAssistant:
         self._decision_logger = DecisionLogger(
             self._settings.project_root / "logs" / "ai_decisions.log"
         )
-        self._client = LMStudioClient(
-            base_url=str(self._settings.lmstudio_api_base),
-            model=self._settings.lmstudio_model,
-            timeout=self._settings.ai_request_timeout,
-        )
         self._researcher = WebResearcher(timeout=min(15.0, self._settings.ai_request_timeout))
         self._decision_interval = self._settings.ai_decision_interval_seconds
         self._max_trades = self._settings.ai_max_trades_per_cycle
@@ -62,7 +57,10 @@ class AIAssistant:
     async def start(self) -> None:
         if self._task is not None:
             return
-        await self._decision_logger.log_event("assistant_start", {"model": self._client.model})
+        await self._decision_logger.log_event(
+            "assistant_start",
+            {"backend": AI_BACKEND, "descriptor": get_backend_descriptor()},
+        )
         self._stop.clear()
         self._task = asyncio.create_task(self._run_loop(), name="ai_assistant_loop")
 
@@ -73,7 +71,6 @@ class AIAssistant:
             with contextlib.suppress(asyncio.CancelledError):
                 await self._task
             self._task = None
-        await self._client.aclose()
         await self._researcher.aclose()
         await self._decision_logger.log_event("assistant_stop", {})
 
@@ -111,10 +108,12 @@ class AIAssistant:
             },
             {"role": "user", "content": prompt},
         ]
-        response_text = await self._client.chat(
+        response_text = await asyncio.to_thread(
+            local_chat,
             messages,
-            response_format={"type": "json_object"},
             temperature=0.1,
+            max_tokens=512,
+            top_p=0.9,
         )
         decision = self._parse_decision(response_text)
         await self._decision_logger.log_event(

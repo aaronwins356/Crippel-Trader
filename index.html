@@ -64,7 +64,7 @@
           </fieldset>
           <fieldset>
             <legend>LLM Assistant</legend>
-            <label>Endpoint (LM Studio base URL)
+            <label>Endpoint (Backend API base URL)
               <input type="url" id="llm-endpoint" name="llm.endpoint" placeholder="http://127.0.0.1:1234" required />
             </label>
             <label>Model name
@@ -144,7 +144,7 @@
         <header class="card-header">
           <h2>LLM Assistant</h2>
         </header>
-        <p class="card-description">Chat with a local LM Studio model. Responses support Markdown and code blocks. Edit before applying changes.</p>
+        <p class="card-description">Chat with the offline local LLM through the backend. Responses support Markdown and code blocks. Edit before applying changes.</p>
         <div class="chat-window" id="chat-window" role="log" aria-live="polite"></div>
         <textarea id="chat-input" rows="4" placeholder="Ask for a refactor, paste a stack trace, or request code improvements."></textarea>
         <div class="chat-actions">

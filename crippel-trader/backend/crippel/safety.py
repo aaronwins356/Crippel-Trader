@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import sys
+from pathlib import Path
 from typing import Optional
 
 import structlog
@@ -161,9 +163,21 @@ def validate_environment(settings: AppSettings) -> list[str]:
         warnings.append("Discord notifications enabled but webhook URL not configured")
     
     # Check AI configuration
-    if settings.ai_strategy_generation_enabled and not settings.openai_api_key:
-        warnings.append("AI strategy generation enabled but OpenAI API key not configured")
-    
+    if settings.ai_strategy_generation_enabled:
+        backend = os.getenv("AI_BACKEND", "llamacpp").lower()
+        if backend == "hf":
+            model_dir = Path(os.getenv("LOCAL_HF_MODEL", "models/local/Qwen2.5-7B-Instruct")).expanduser()
+            if not model_dir.exists():
+                warnings.append(
+                    "AI strategy generation enabled but LOCAL_HF_MODEL does not point to an existing directory"
+                )
+        else:
+            model_path = Path(os.getenv("LOCAL_GGUF_MODEL", "models/local/llama3-instruct.Q4_K_M.gguf")).expanduser()
+            if not model_path.exists():
+                warnings.append(
+                    "AI strategy generation enabled but LOCAL_GGUF_MODEL does not point to an existing file"
+                )
+
     # Log warnings
     for warning in warnings:
         logger.warning("Configuration warning", message=warning)

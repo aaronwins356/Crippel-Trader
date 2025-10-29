@@ -1,0 +1,9 @@
+# Optional dependencies for offline local LLM support.
+# Install alongside requirements.txt when you need on-device inference.
+llama-cpp-python>=0.2.90
+# Transformers backend (requires installing PyTorch separately).
+transformers>=4.44.0
+accelerate>=0.33.0
+sentencepiece>=0.2.0
+# Optional: 4-bit loading helpers (only available on Linux).
+bitsandbytes>=0.43.0 ; platform_system == "Linux"

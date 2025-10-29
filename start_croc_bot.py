@@ -50,7 +50,7 @@ def main() -> int:
     print("\n🧭 Next steps:")
     print("   1. Open index.html in your browser (no server required).")
     print("   2. Update config via the UI and download the modified file when prompted.")
-    print("   3. Connect to Kraken and LM Studio directly from the browser UI.")
+    print("   3. Point the dashboard at your backend API base and chat with the local LLM.")
     print("\nHappy trading! 🐊")
     return 0
 
