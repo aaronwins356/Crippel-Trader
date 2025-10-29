@@ -14,7 +14,7 @@ from .real_trading_engine import RealTradingEngine
 from .adapters.kraken import KrakenAdapter
 from .strategies.technical import (
     RSIStrategy, MACDStrategy, BollingerBandsStrategy, 
-    MomentumStrategy, MovingAverageCrossoverStrategy
+    MomentumStrategy
 )
 from .strategies.arbitrage import ArbitrageStrategy
 from .strategies.market_making import MarketMakingStrategy
