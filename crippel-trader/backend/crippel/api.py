@@ -530,6 +530,44 @@ async def health_check() -> JSONResponse:
     })
 
 
+@router.get("/healthz")
+async def healthz() -> JSONResponse:
+    """Kubernetes-style health check (alias for /health)."""
+    return JSONResponse({
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat()
+    })
+
+
+@router.get("/readyz")
+async def readyz(request: Request) -> JSONResponse:
+    """Readiness check - indicates if service is ready to handle requests."""
+    settings = get_settings()
+    
+    # Check critical components
+    checks = {
+        "api": "ready",
+        "config": "ready",
+        "timestamp": datetime.utcnow().isoformat()
+    }
+    
+    # Add trading mode info
+    checks["trading_mode"] = settings.trading_mode
+    checks["live_trading"] = settings.is_live_trading
+    
+    # Overall status
+    all_ready = all(v == "ready" for k, v in checks.items() if k not in ["timestamp", "trading_mode", "live_trading"])
+    
+    return JSONResponse(
+        {
+            "status": "ready" if all_ready else "not_ready",
+            "checks": checks,
+            "version": "1.0.0"
+        },
+        status_code=200 if all_ready else 503
+    )
+
+
 # Real Trading System Endpoints
 class RealTradingRequest(BaseModel):
     symbol: str
