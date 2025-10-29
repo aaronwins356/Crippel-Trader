@@ -1,194 +1,86 @@
-# 🐊 Croc-Bot — Autonomous Trading Desk
+# 🐊 Croc-Bot — Real-Time AI-Assisted Trading Bot
 
-Croc-Bot is a production-grade Python trading stack that combines algorithmic execution, AI-assisted strategy research, rigorous risk management, and rich dashboards. The codebase now ships with Windows-first dependency profiles and PowerShell automation so the complete platform can be launched from a fresh workstation in minutes.
+![Croc-Bot Logo](path/to/logo.png)
 
----
+## 🚀 Why Croc-Bot?
+Croc-Bot is a production-minded, AI-assisted trading platform that lets you research, test, and deploy crypto strategies at Kraken speed. Whether you trade with real capital or prefer a risk-free sandbox, Croc-Bot keeps the guardrails up while an on-device LLM co-pilot helps you level-up your code.
 
-## 📚 Table of Contents
-1. [Overview](#overview)
-2. [Key Capabilities](#key-capabilities)
-3. [System Architecture](#system-architecture)
-4. [Supported Platforms](#supported-platforms)
-5. [Prerequisites](#prerequisites)
-6. [Windows PowerShell Quick Start](#windows-powershell-quick-start)
-7. [Cross-Platform Quick Start](#cross-platform-quick-start)
-8. [Running the Services](#running-the-services)
-9. [Configuration](#configuration)
-10. [Dashboards](#dashboards)
-11. [Testing & Quality](#testing--quality)
-12. [Project Layout](#project-layout)
-13. [Troubleshooting](#troubleshooting)
-14. [Support & Next Steps](#support--next-steps)
+## ✨ Core Features
+- 💸 **Dual Trading Modes** – Flip between real-money execution and a fully isolated paper simulator without touching the core code.
+- 📡 **Kraken WebSocket Market Feed** – Stream tick-level prices and a live order book via Kraken's WebSocket API for immediate market context.
+- 🛡️ **Built-In Risk Management** – Enforce capital allocations, per-trade stop-losses, trailing drawdown guards, and fee-aware position sizing before any order leaves the nest.
+- 🤖 **Local LLM Assistant** – Plug in LM Studio (or any OpenAI-compatible local endpoint) with models like Qwen3 to review strategy code, surface refactors, or explain risk reports.
+- 🖥️ **Zero-Backend Frontend** – A standalone HTML/JavaScript command center you can open directly in your browser—no Node, no Flask, no localhost server required.
+- 🧾 **Config-Driven Everything** – Fine-tune behavior through a single `config.json`, version-controlled alongside your strategies.
 
----
-
-## Overview
-- **Purpose:** Automated crypto and equities trading across paper and live venues with institutional-grade safety rails.
-- **Core Stack:** FastAPI backend, async Kraken market adapter, responsive HTML control center, optional AI co-pilot via LM Studio.
-- **Operational Focus:** Smooth Windows/PowerShell experience with virtual environments and reproducible dependency sets.
-
-## Key Capabilities
-| Area | Highlights |
-| --- | --- |
-| **Market Connectivity** | Kraken WebSocket feed with crypto + xStocks coverage, async REST client for reference data. |
-| **Execution Engines** | Paper simulator and live trading engine with slippage, fee, and market-hours models. |
-| **Risk Controls** | Dynamic aggression ladder, drawdown guards, portfolio exposure caps, Discord alerting. |
-| **Strategy Layer** | Multi-strategy manager (RSI, MACD, momentum, arbitrage, market making) plus AI-assisted signal generation. |
-| **Monitoring** | ORJSON-powered FastAPI API, HTML control center, WebSocket streaming, structured logs. |
-
-## System Architecture
-```
-🐊 Croc-Bot Trading Platform
-├── FastAPI backend (uvicorn) with ORJSON responses
-├── Market data adapter (Kraken WebSocket + REST)
-├── Strategy manager (paper & live engines, AI assistant)
-├── Risk manager (dynamic limits + Discord notifications)
-├── Persistence layer (async SQLite repository)
-└── HTML command center (vanilla JS + WebSocket streaming)
-```
-
-## Supported Platforms
-- ✅ **Windows 10/11** (PowerShell 7+, Python 3.11) — primary target.
-- ✅ **macOS / Linux** — supported; install optional `crippel-trader[unix]` extras for uvloop/watchfiles performance boosters.
-
-## Prerequisites
-- Python **3.11 or newer** on PATH.
-- Git (optional but recommended).
-- For live trading: funded Kraken account + API keys.
-- Optional: Discord webhook for alert streaming.
-
----
-
-## Windows PowerShell Quick Start
-```powershell
-# 1. Clone the repository
-git clone https://github.com/aaronwins356/Croc-Bot.git
-cd Croc-Bot
-
-# 2. Provision dependencies (installs backend + dashboards)
-powershell -ExecutionPolicy Bypass -File crippel-trader\scripts\setup.ps1
-
-# 3. Launch everything (backend, trading engine, dashboards)
-StartBot.bat
-```
-The setup script performs a `python -m pip install -r crippel-trader\requirements.txt`, ensuring Windows-safe wheels are used. Optional Unix-only packages are automatically skipped.
-
-## Cross-Platform Quick Start
+## 🛠️ Quick Start
+### 1️⃣ Clone & Install
 ```bash
 git clone https://github.com/aaronwins356/Croc-Bot.git
 cd Croc-Bot
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r crippel-trader/requirements.txt
-python start_croc_bot.py  # launches FastAPI backend on http://localhost:8000
+python -m venv .venv
+source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
+python -m pip install -r requirements.txt
 ```
-Install optional extras on Unix systems for additional performance:
+
+### 2️⃣ Configure the Bot
+Edit `config.json` with your favourite editor (VS Code, vim, nano, etc.). See the [🧭 Config Reference](#-config-reference) for field-level guidance.
 ```bash
-python -m pip install "crippel-trader[unix]"  # uvloop + watchfiles
+cp config.json config.local.json  # optional safety copy
+nano config.json
 ```
 
----
+### 3️⃣ Run the Bot Engine
+Fire up your preferred runtime:
+- 🧪 Paper testing: `python start_croc_bot.py`
+- 💼 Live execution (after rehearsals): `python start_real_trading.py`
 
-## Running the Services
-| Service | Command | Purpose |
+### 4️⃣ Launch the Trading UI
+Open `trading_dashboard.html` directly in your browser:
+- 📂 macOS/Linux: `open trading_dashboard.html`
+- 🪟 Windows: `start trading_dashboard.html`
+- 🧪 Or simply drag-and-drop the file into any modern browser.
+
+### 5️⃣ Chat with the AI Co-Pilot
+1. Launch LM Studio (or your preferred local server) and load a Qwen3-compatible model.
+2. Update `llm.endpoint` and `llm.model` in `config.json` to match the server.
+3. Use the "AI Assistant" panel in the dashboard to request code reviews, generate new strategies, or draft risk reports. Ask it to improve specific files (e.g., `bot/strategy.py`) or tighten risk constraints—it can propose diffs you can apply manually.
+
+## 🧭 Config Reference
+`config.json` keeps Croc-Bot deterministic and reproducible. Each top-level key controls a focused part of the runtime:
+
+| Field | Purpose | Key Settings |
 | --- | --- | --- |
-| **Backend API** | `python start_croc_bot.py` | Bootstraps a dedicated virtual environment, installs requirements, and serves FastAPI via uvicorn. |
-| **Real Trading Engine** | `python start_real_trading.py` | Starts live trading loop with confirmations, slippage model, and safety checks. |
-| **HTML Control Center** | Open `trading_dashboard.html` in a browser | Web UI that streams metrics, adjusts aggression, and submits manual orders. |
+| `trading` | Primary execution behaviour. | `mode` ("real" or "paper"), `initial_capital`, `aggression` (1–10 risk slider), `symbols` (Kraken tickers to monitor/trade). |
+| `api` | Credentials and outbound notifications. | `kraken_key`, `kraken_secret` (live trading only), `discord_webhook` for optional alerting. |
+| `llm` | Local AI assistant wiring. | `endpoint` (http URL for LM Studio/OpenAI-compatible server), `model` (e.g. `qwen/qwen3-coder-30b`), `temperature` (0.0–1.0 creativity dial). |
+| `fees` | Exchange fee assumptions baked into PnL and risk maths. | `maker`, `taker` expressed as decimals (0.001 = 0.10%). |
+| `runtime` | Housekeeping for logging and safeguards. | `log_level` (DEBUG/INFO/WARN/ERROR), `read_only_mode` to block order transmission while still streaming data. |
 
-Backends expose:
-- REST API: `http://localhost:8000/api`
-- API Docs: `http://localhost:8000/docs`
-- WebSocket Stream: `ws://localhost:8000/ws/stream`
+> 💡 **Tip:** Commit `config.json` templates to version control, but store live API keys in a `.env` or secret manager. Croc-Bot reads overrides from environment variables if present.
 
----
+## 📈 Operating Modes
+- 🧪 **Paper Trading** – Default mode. Simulates fills using live order book snapshots while respecting your fee model and risk guardrails.
+- 💼 **Live Trading** – Requires populated Kraken API keys and due diligence. Risk management remains enforced before each order submit.
 
-## Configuration
-Create `crippel-trader/backend/.env` (or use environment variables) to customise behaviour:
-```env
-# Trading modes
-CRIPPEL_TRADING_MODE=paper
-CRIPPEL_INITIAL_CAPITAL=200.0
-CRIPPEL_DEFAULT_AGGRESSION=3
+Switch modes by toggling `trading.mode` between `"paper"` and `"real"`.
 
-# Kraken API keys for live trading
-CRIPPEL_KRAKEN_API_KEY=your_key
-CRIPPEL_KRAKEN_API_SECRET=your_secret
-CRIPPEL_REAL_TRADING=0  # flip to 1 once live trading is authorised
+## 🧠 Using the AI Assistant Effectively
+- 🔄 **Refactor Strategies:** Paste snippets into the chat to request performance tweaks or alternative indicators.
+- 📚 **Explain Decisions:** Ask the LLM to summarise the latest trades, risk flags, or PnL swings based on current logs.
+- 🧪 **Prototype Safely:** Keep `runtime.read_only_mode` true while iterating so the assistant's suggestions can be hot-loaded without sending orders.
 
-# Discord notifications
-CRIPPEL_DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
-CRIPPEL_DISCORD_NOTIFICATIONS_ENABLED=true
+## 🧰 Troubleshooting Tips
+- ❌ **Dashboard says "offline"?** Ensure the trading process is running and the WebSocket endpoint configured in the frontend is reachable.
+- 🔑 **Live trading fails to authenticate?** Double-check `api.kraken_key`/`api.kraken_secret` and confirm the API key has trading permissions.
+- 🤖 **Assistant not responding?** Verify the local model server is up, accessible, and the `llm.endpoint` matches the exposed port.
 
-# AI strategy assistant
-CRIPPEL_LMSTUDIO_API_BASE=http://localhost:1234/v1
-CRIPPEL_LMSTUDIO_MODEL=croc-bot
-CRIPPEL_AI_STRATEGY_GENERATION_ENABLED=true
-```
-Key risk levels (can be adjusted via aggression slider):
+## 📜 License
+This project is released under the MIT License. See [`LICENSE`](LICENSE) for details.
 
-| Aggression | Max Drawdown | Per-Trade Risk | Position Size | Profile |
-| --- | --- | --- | --- | --- |
-| 1 | 5% | 1% | 0.5× | Capital preservation |
-| 3 | 15% | 3% | 1.0× | Balanced |
-| 5 | 25% | 5% | 1.5× | Growth |
-| 7 | 35% | 7% | 2.0× | Opportunistic |
-| 10 | 50% | 20% | 3.0× | High-octane |
+## 🤝 Contributing
+Fork the repo, spin up a feature branch, and open a pull request with a crisp summary, tests, and screenshots where relevant. Please discuss major changes in an issue first—we value collaborative design.
 
----
+## ⚠️ Disclaimer
+Croc-Bot interacts with real markets. Markets are volatile, APIs can change, and algorithms can misbehave. **Use at your own risk.**
 
-## Dashboards
-### HTML Control Center
-- Single-page application powered by vanilla HTML, CSS, and JavaScript.
-- Streams live portfolio, risk, and strategy metrics from the FastAPI backend via REST and WebSocket.
-- Provides manual order tickets, aggression controls, and LM Studio chat integration — open `trading_dashboard.html` directly in your browser.
-
----
-
-## Testing & Quality
-| Check | Command |
-| --- | --- |
-| Unit & async tests | `pytest` (within `crippel-trader/backend`) |
-| Type checking | `mypy crippel-trader/backend/crippel` |
-| Linting | `ruff check crippel-trader/backend/crippel` |
-
-> Development extras can be installed with `python -m pip install "crippel-trader[dev]"`.
-
----
-
-## Project Layout
-```
-Croc-Bot/
-├── StartBot.bat                     # Full Windows launch orchestrator
-├── start_croc_bot.py                # Backend bootstrap (venv + uvicorn)
-├── start_real_trading.py            # Live trading entrypoint
-├── trading_dashboard.html           # Standalone HTML command center
-├── crippel-trader/
-│   ├── backend/
-│   │   ├── crippel/                 # Application package
-│   │   └── main.py                  # ASGI entrypoint
-│   ├── scripts/setup.ps1            # Windows dependency bootstrapper
-│   ├── requirements.txt             # Windows-friendly dependency set
-│   └── pyproject.toml               # Package metadata & extras
-└── test_system.py                   # High-level system smoke test
-```
-
----
-
-## Troubleshooting
-| Symptom | Resolution |
-| --- | --- |
-| **`uvloop` build fails on Windows** | Safe to ignore — dependency is skipped automatically in `requirements.txt`. |
-| **`ModuleNotFoundError` after StartBot** | Run `python -m pip install -r crippel-trader\requirements.txt` manually to inspect logs. |
-| **HTML dashboard shows "Offline"** | Ensure `trading_dashboard.html` is pointed at `http://localhost:8000` and the backend is running. |
-| **Discord alerts not delivered** | Ensure webhook URL is correct and notifications are enabled (`CRIPPEL_DISCORD_NOTIFICATIONS_ENABLED=true`). |
-
----
-
-## Support & Next Steps
-- Configure `.env` for live trading only after validating paper performance.
-- Use the aggression slider (1–10) to tune drawdown tolerance in production.
-- Extend strategies under `crippel-trader/backend/crippel/strategies/` and register them in the `StrategyManager`.
-- For contributions, open issues or pull requests describing enhancements or bug fixes.
-
-Happy trading and stay safe! 🐊
