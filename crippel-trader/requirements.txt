@@ -25,7 +25,10 @@ alembic>=1.13
 aiosqlite>=0.19
 
 # Trading and financial analysis
-ta-lib>=0.4.28
+# Note: ta-lib requires native compilation on Windows
+# Windows users: Install via wheel from https://www.lfd.uci.edu/~gohlke/pythonlibs/#ta-lib
+# Or use: pip install TA-Lib (requires Visual C++ build tools)
+# Linux/Mac: pip install ta-lib (requires ta-lib C library)
 yfinance>=0.2.18
 ccxt>=4.1
 
