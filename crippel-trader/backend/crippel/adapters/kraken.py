@@ -123,9 +123,49 @@ class KrakenAdapter(ExchangeAdapter):
         return symbol in SUPPORTED_CRYPTO or symbol in SUPPORTED_XSTOCKS
 
     async def connect_market_data(self, symbols: list[str]) -> AsyncIterator[PriceTick]:
-        """Connect to Kraken WebSocket and stream market data."""
-        normalized_symbols = [self._normalize_symbol(symbol) for symbol in symbols]
+        """Connect to Kraken WebSocket and stream market data.
+        
+        Only subscribes to supported symbols (crypto and xStocks).
+        Rejects unsupported symbols with clear logging.
+        """
+        # Filter and validate symbols
+        valid_symbols = []
+        rejected_symbols = []
+        
+        for symbol in symbols:
+            if self._is_supported_symbol(symbol):
+                valid_symbols.append(symbol)
+            else:
+                rejected_symbols.append(symbol)
+        
+        if rejected_symbols:
+            self._logger.warning(
+                "Rejecting unsupported symbols for Kraken",
+                rejected=rejected_symbols,
+                supported_crypto=list(SUPPORTED_CRYPTO),
+                supported_xstocks=list(SUPPORTED_XSTOCKS)
+            )
+            await self._notification_service.send_system_alert(
+                "Symbol Validation",
+                f"Rejected unsupported symbols: {', '.join(rejected_symbols)}. "
+                f"Kraken supports crypto and xStocks only.",
+                "warning"
+            )
+        
+        if not valid_symbols:
+            error_msg = "No valid symbols to subscribe to"
+            self._logger.error(error_msg, requested=symbols)
+            raise ValueError(error_msg)
+        
+        # Normalize valid symbols for Kraken
+        normalized_symbols = [self._normalize_symbol(symbol) for symbol in valid_symbols]
         self._subscribed_symbols.update(normalized_symbols)
+        
+        self._logger.info(
+            "Subscribing to market data",
+            valid_symbols=valid_symbols,
+            normalized=normalized_symbols
+        )
         
         while True:
             try:
