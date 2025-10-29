@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Croc-Bot Control Center</title>
+    <style>
+        :root {
+            color-scheme: dark light;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f172a;
+            color: #e2e8f0;
+        }
+
+        body {
+            margin: 0;
+            background: linear-gradient(145deg, #0f172a, #1e293b);
+            min-height: 100vh;
+            display: flex;
+            align-items: stretch;
+            justify-content: center;
+        }
+
+        .app-shell {
+            display: flex;
+            flex-direction: row;
+            width: min(1200px, 96vw);
+            gap: 1.5rem;
+            padding: 1.5rem;
+        }
+
+        .panel {
+            background: rgba(15, 23, 42, 0.85);
+            border-radius: 18px;
+            padding: 1.5rem;
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.35);
+            backdrop-filter: blur(18px);
+        }
+
+        .control-panel {
+            flex: 3;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .chat-panel {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            height: 90vh;
+            max-height: 90vh;
+        }
+
+        h1, h2, h3 {
+            margin: 0 0 0.75rem 0;
+            font-weight: 600;
+        }
+
+        fieldset {
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            border-radius: 12px;
+            padding: 1rem 1.25rem 1.25rem 1.25rem;
+            display: grid;
+            gap: 1rem;
+        }
+
+        fieldset legend {
+            padding: 0 0.5rem;
+            font-size: 0.95rem;
+            color: #94a3b8;
+        }
+
+        label {
+            display: flex;
+            flex-direction: column;
+            font-size: 0.9rem;
+            gap: 0.35rem;
+        }
+
+        input, select, button, textarea {
+            border-radius: 10px;
+            border: 1px solid rgba(148, 163, 184, 0.4);
+            background-color: rgba(30, 41, 59, 0.6);
+            color: inherit;
+            padding: 0.55rem 0.75rem;
+            font-size: 0.95rem;
+        }
+
+        select[multiple] {
+            min-height: 6rem;
+        }
+
+        input[type="range"] {
+            accent-color: #22d3ee;
+        }
+
+        button {
+            cursor: pointer;
+            background: linear-gradient(135deg, #1d4ed8, #38bdf8);
+            border: none;
+            transition: transform 0.12s ease, box-shadow 0.12s ease;
+            color: #f8fafc;
+            font-weight: 600;
+        }
+
+        button.secondary {
+            background: linear-gradient(135deg, #0f172a, #1f2937);
+            border: 1px solid rgba(148, 163, 184, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        button:not(:disabled):hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px rgba(56, 189, 248, 0.35);
+        }
+
+        .grid-two {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+        }
+
+        .trade-log {
+            height: 260px;
+            overflow-y: auto;
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 12px;
+            padding: 1rem;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .trade-entry {
+            padding: 0.75rem;
+            border-radius: 10px;
+            background: rgba(30, 41, 59, 0.85);
+            border-left: 4px solid #38bdf8;
+            display: grid;
+            gap: 0.4rem;
+            font-size: 0.9rem;
+        }
+
+        .trade-entry .meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+
+        .metrics {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .metric {
+            background: rgba(30, 41, 59, 0.65);
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            flex: 1 1 140px;
+        }
+
+        .metric .label {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .metric .value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-top: 0.4rem;
+        }
+
+        .chat-panel h2 {
+            margin-bottom: 0.5rem;
+        }
+
+        .chat-history {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            border-radius: 12px;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            background: rgba(15, 23, 42, 0.6);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .message {
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .message.user {
+            align-items: end;
+        }
+
+        .message.assistant .bubble {
+            background: rgba(59, 130, 246, 0.15);
+            border-left: 3px solid rgba(96, 165, 250, 0.9);
+        }
+
+        .message.user .bubble {
+            background: rgba(6, 182, 212, 0.15);
+            border-right: 3px solid rgba(34, 211, 238, 0.9);
+        }
+
+        .bubble {
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+
+        .assistant-controls {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .assistant-controls textarea {
+            flex: 1;
+            min-height: 90px;
+            resize: vertical;
+        }
+
+        .chat-footer {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .code-block {
+            font-family: "Fira Code", "Consolas", "Courier New", monospace;
+            font-size: 0.85rem;
+            background: rgba(10, 12, 24, 0.85);
+            border-radius: 10px;
+            padding: 0.9rem;
+            overflow-x: auto;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            position: relative;
+            white-space: pre;
+        }
+
+        .code-block::before {
+            content: attr(data-language);
+            position: absolute;
+            top: 0.45rem;
+            right: 0.75rem;
+            font-size: 0.75rem;
+            color: #38bdf8;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .syntax .kw { color: #38bdf8; }
+        .syntax .fn { color: #fbbf24; }
+        .syntax .str { color: #34d399; }
+        .syntax .num { color: #f472b6; }
+        .syntax .com { color: #94a3b8; font-style: italic; }
+
+        @media (max-width: 1024px) {
+            .app-shell {
+                flex-direction: column;
+            }
+            .chat-panel {
+                max-height: 70vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="app-shell">
+        <section class="panel control-panel">
+            <header>
+                <h1>Croc-Bot Command Center</h1>
+                <p style="color: #94a3b8; margin: 0; font-size: 0.95rem;">Simulate trading strategies, tweak risk settings, and collaborate with your local LLM assistant.</p>
+            </header>
+
+            <section class="metrics" id="metrics">
+                <div class="metric">
+                    <div class="label">Initial Capital</div>
+                    <div class="value" id="metric-capital">$100,000.00</div>
+                </div>
+                <div class="metric">
+                    <div class="label">Aggression</div>
+                    <div class="value" id="metric-aggression">5</div>
+                </div>
+                <div class="metric">
+                    <div class="label">Last Trade PnL</div>
+                    <div class="value" id="metric-pnl">$0.00</div>
+                </div>
+            </section>
+
+            <form id="config-form">
+                <fieldset>
+                    <legend>Trading Session</legend>
+                    <div class="grid-two">
+                        <label>
+                            Trading Mode
+                            <select id="mode">
+                                <option value="paper">Paper</option>
+                                <option value="live">Live</option>
+                            </select>
+                        </label>
+                        <label>
+                            Initial Capital (USD)
+                            <input type="number" id="capital" min="0" step="100" value="100000" />
+                        </label>
+                        <label>
+                            Aggression Level: <span id="aggression-display">5</span>
+                            <input type="range" id="aggression" min="1" max="10" step="1" value="5" />
+                        </label>
+                        <label>
+                            Maker Fee (%)
+                            <input type="number" id="maker-fee" min="0" step="0.01" value="0.16" />
+                        </label>
+                        <label>
+                            Taker Fee (%)
+                            <input type="number" id="taker-fee" min="0" step="0.01" value="0.26" />
+                        </label>
+                        <label>
+                            Symbol Whitelist
+                            <select id="symbols" multiple>
+                                <option value="BTC/USD">BTC/USD</option>
+                                <option value="ETH/USD">ETH/USD</option>
+                                <option value="SOL/USD">SOL/USD</option>
+                                <option value="BNB/USD">BNB/USD</option>
+                                <option value="XRP/USD">XRP/USD</option>
+                                <option value="DOGE/USD">DOGE/USD</option>
+                                <option value="ADA/USD">ADA/USD</option>
+                                <option value="LTC/USD">LTC/USD</option>
+                            </select>
+                        </label>
+                    </div>
+                </fieldset>
+
+                <div class="assistant-controls">
+                    <button type="button" id="save-config">Save Config</button>
+                    <button type="button" class="secondary" id="load-config">Load Config</button>
+                    <button type="button" id="execute-trade">Execute Trade</button>
+                </div>
+            </form>
+
+            <section>
+                <h2>Real-Time Trade Log</h2>
+                <div class="trade-log" id="trade-log"></div>
+            </section>
+        </section>
+
+        <section class="panel chat-panel">
+            <h2>AI Assistant (LM Studio)</h2>
+            <label style="margin-bottom: 0.75rem; font-size: 0.85rem; color: #94a3b8;">
+                Model Name
+                <input type="text" id="model-name" value="phi-3.5-mini" placeholder="Model identifier registered in LM Studio" />
+            </label>
+            <div class="chat-history" id="chat-history"></div>
+            <div class="chat-footer">
+                <textarea id="chat-input" placeholder="Ask the assistant to adjust risk logic, modify fee handling, etc."></textarea>
+                <div style="display:flex; gap:0.75rem;">
+                    <button type="button" id="send-message">Send</button>
+                    <button type="button" class="secondary" id="test-ai" title="Send the latest code block to your Python sandbox endpoint">Test AI Output</button>
+                </div>
+                <label style="font-size: 0.8rem; color: #64748b;">
+                    Python Sandbox Endpoint
+                    <input type="text" id="sandbox-endpoint" placeholder="http://localhost:5001/run" value="http://localhost:5001/run" />
+                </label>
+            </div>
+        </section>
+    </main>
+
+    <template id="trade-entry-template">
+        <div class="trade-entry">
+            <div class="meta">
+                <span class="pair"></span>
+                <span class="time"></span>
+            </div>
+            <div class="details"></div>
+            <div class="meta">
+                <span class="size"></span>
+                <span class="pnl"></span>
+            </div>
+        </div>
+    </template>
+    <script>
+        const state = {
+            config: {
+                mode: "paper",
+                capital: 100000,
+                aggression: 5,
+                makerFee: 0.16,
+                takerFee: 0.26,
+                symbols: ["BTC/USD", "ETH/USD"]
+            },
+            tradeLog: [],
+            lastCodeSnippet: null,
+            autoTradeTimer: null,
+            chatHistory: []
+        };
+
+        const els = {
+            form: document.getElementById("config-form"),
+            mode: document.getElementById("mode"),
+            capital: document.getElementById("capital"),
+            aggression: document.getElementById("aggression"),
+            aggressionDisplay: document.getElementById("aggression-display"),
+            makerFee: document.getElementById("maker-fee"),
+            takerFee: document.getElementById("taker-fee"),
+            symbols: document.getElementById("symbols"),
+            saveConfig: document.getElementById("save-config"),
+            loadConfig: document.getElementById("load-config"),
+            executeTrade: document.getElementById("execute-trade"),
+            tradeLog: document.getElementById("trade-log"),
+            metricCapital: document.getElementById("metric-capital"),
+            metricAggression: document.getElementById("metric-aggression"),
+            metricPnl: document.getElementById("metric-pnl"),
+            chatHistory: document.getElementById("chat-history"),
+            chatInput: document.getElementById("chat-input"),
+            sendMessage: document.getElementById("send-message"),
+            modelName: document.getElementById("model-name"),
+            testAI: document.getElementById("test-ai"),
+            sandboxEndpoint: document.getElementById("sandbox-endpoint")
+        };
+
+        const LS_KEY = "croc-bot-config";
+
+        function formatCurrency(value) {
+            return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
+        }
+
+        function formatPercent(value) {
+            return Number(value).toFixed(2) + "%";
+        }
+
+        function updateMetrics(latestPnL = 0) {
+            els.metricCapital.textContent = formatCurrency(state.config.capital);
+            els.metricAggression.textContent = state.config.aggression;
+            els.metricPnl.textContent = formatCurrency(latestPnL);
+        }
+
+        function refreshForm() {
+            els.mode.value = state.config.mode;
+            els.capital.value = state.config.capital;
+            els.aggression.value = state.config.aggression;
+            els.aggressionDisplay.textContent = state.config.aggression;
+            els.makerFee.value = state.config.makerFee;
+            els.takerFee.value = state.config.takerFee;
+            Array.from(els.symbols.options).forEach(option => {
+                option.selected = state.config.symbols.includes(option.value);
+            });
+            updateMetrics();
+        }
+
+        function captureForm() {
+            const selectedSymbols = Array.from(els.symbols.selectedOptions).map(option => option.value);
+            state.config = {
+                mode: els.mode.value,
+                capital: Number(els.capital.value) || 0,
+                aggression: Number(els.aggression.value) || 1,
+                makerFee: Number(els.makerFee.value) || 0,
+                takerFee: Number(els.takerFee.value) || 0,
+                symbols: selectedSymbols
+            };
+            updateMetrics();
+        }
+        function persistConfig() {
+            captureForm();
+            localStorage.setItem(LS_KEY, JSON.stringify(state.config));
+            notify("Configuration saved to localStorage.");
+        }
+
+        function loadPersistedConfig() {
+            const raw = localStorage.getItem(LS_KEY);
+            if (!raw) {
+                notify("No saved configuration found.", "warn");
+                return;
+            }
+            try {
+                const parsed = JSON.parse(raw);
+                state.config = {
+                    mode: parsed.mode || "paper",
+                    capital: Number(parsed.capital) || 0,
+                    aggression: Number(parsed.aggression) || 1,
+                    makerFee: Number(parsed.makerFee) || 0,
+                    takerFee: Number(parsed.takerFee) || 0,
+                    symbols: Array.isArray(parsed.symbols) ? parsed.symbols : []
+                };
+                refreshForm();
+                notify("Configuration loaded from localStorage.");
+            } catch (error) {
+                console.error("Failed to load configuration", error);
+                notify("Failed to load configuration.", "error");
+            }
+        }
+
+        function notify(message, variant = "info") {
+            const toast = document.createElement("div");
+            toast.textContent = message;
+            toast.style.position = "fixed";
+            toast.style.bottom = "24px";
+            toast.style.right = "24px";
+            toast.style.padding = "0.75rem 1rem";
+            toast.style.borderRadius = "10px";
+            toast.style.zIndex = 9999;
+            toast.style.fontSize = "0.9rem";
+            toast.style.boxShadow = "0 12px 24px rgba(0, 0, 0, 0.35)";
+            toast.style.transition = "opacity 0.4s ease";
+
+            const colors = {
+                info: ["rgba(56, 189, 248, 0.25)", "#38bdf8"],
+                warn: ["rgba(250, 204, 21, 0.2)", "#facc15"],
+                error: ["rgba(248, 113, 113, 0.2)", "#f87171"]
+            };
+            const [bg, border] = colors[variant] || colors.info;
+            toast.style.background = bg;
+            toast.style.border = `1px solid ${border}`;
+
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = "0";
+                setTimeout(() => toast.remove(), 400);
+            }, 2400);
+        }
+        function addTradeEntry(trade) {
+            state.tradeLog.unshift(trade);
+            const template = document.getElementById("trade-entry-template");
+            const entry = template.content.firstElementChild.cloneNode(true);
+            entry.querySelector(".pair").textContent = `${trade.symbol} • ${trade.side.toUpperCase()}`;
+            entry.querySelector(".time").textContent = trade.timestamp.toLocaleTimeString();
+            entry.querySelector(".details").textContent = `Price ${trade.price.toFixed(2)} • Fees ${formatPercent(trade.feePercent)}`;
+            entry.querySelector(".size").textContent = `Size ${trade.size.toFixed(4)}`;
+            entry.querySelector(".pnl").textContent = `PnL ${formatCurrency(trade.pnl)}`;
+
+            els.tradeLog.prepend(entry);
+            while (els.tradeLog.children.length > 100) {
+                els.tradeLog.removeChild(els.tradeLog.lastElementChild);
+            }
+            updateMetrics(trade.pnl);
+        }
+
+        function randomChoice(list) {
+            return list[Math.floor(Math.random() * list.length)];
+        }
+
+        function simulateTrade(forcedSymbol) {
+            captureForm();
+            const symbolPool = state.config.symbols.length ? state.config.symbols : Array.from(els.symbols.options).map(option => option.value);
+            const symbol = forcedSymbol || randomChoice(symbolPool);
+            const side = Math.random() > 0.5 ? "buy" : "sell";
+            const basePrice = symbol.includes("BTC") ? 68000 : symbol.includes("ETH") ? 3800 : 200 + Math.random() * 200;
+            const volatility = state.config.aggression / 10;
+            const price = basePrice * (1 + (Math.random() - 0.5) * 0.05 * volatility);
+            const size = (state.config.capital * (0.005 + Math.random() * 0.02) * (state.config.aggression / 10)) / price;
+            const feePercent = side === "buy" ? state.config.takerFee : state.config.makerFee;
+            const pnl = (Math.random() - 0.4) * state.config.aggression * 20;
+            const trade = {
+                id: crypto.randomUUID(),
+                symbol,
+                side,
+                price,
+                size,
+                feePercent,
+                pnl,
+                timestamp: new Date()
+            };
+            addTradeEntry(trade);
+        }
+
+        function startMockStream() {
+            if (state.autoTradeTimer) {
+                clearInterval(state.autoTradeTimer);
+            }
+            state.autoTradeTimer = setInterval(() => simulateTrade(), 5000);
+        }
+
+        function stopMockStream() {
+            if (state.autoTradeTimer) {
+                clearInterval(state.autoTradeTimer);
+                state.autoTradeTimer = null;
+            }
+        }
+        function handleAggressionChange(event) {
+            els.aggressionDisplay.textContent = event.target.value;
+            captureForm();
+        }
+
+        async function sendChatMessage() {
+            const content = els.chatInput.value.trim();
+            if (!content) {
+                return;
+            }
+            const model = els.modelName.value.trim();
+            if (!model) {
+                notify("Specify a model name before sending.", "warn");
+                return;
+            }
+
+            const userMessage = { role: "user", content };
+            state.chatHistory.push(userMessage);
+            renderChat();
+            els.chatInput.value = "";
+
+            const assistantPlaceholder = { role: "assistant", content: "Thinking…", pending: true };
+            state.chatHistory.push(assistantPlaceholder);
+            renderChat();
+
+            try {
+                const payloadMessages = state.chatHistory
+                    .filter(message => !message.pending)
+                    .map(message => ({ role: message.role, content: message.content }));
+                const response = await fetch("http://localhost:1234/v1/chat/completions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        model,
+                        messages: payloadMessages,
+                        temperature: 0.3,
+                        max_tokens: 800
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                const answer = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content
+                    ? data.choices[0].message.content
+                    : "No response received.";
+                state.chatHistory[state.chatHistory.length - 1] = { role: "assistant", content: answer };
+                extractLatestCode(answer);
+                renderChat();
+            } catch (error) {
+                console.error("Assistant request failed", error);
+                state.chatHistory[state.chatHistory.length - 1] = { role: "assistant", content: `Error: ${error.message}` };
+                renderChat();
+                notify("Failed to reach LM Studio. Ensure it is running.", "error");
+            }
+        }
+        function extractLatestCode(text) {
+            const parts = text.split('```');
+            for (let i = parts.length - 1; i >= 1; i -= 1) {
+                if (i % 2 === 1) {
+                    const block = parts[i];
+                    const newlineIndex = block.indexOf('\n');
+                    let language = 'text';
+                    let code = block;
+                    if (newlineIndex !== -1) {
+                        const possible = block.slice(0, newlineIndex).trim();
+                        language = possible || 'text';
+                        code = block.slice(newlineIndex + 1);
+                    }
+                    state.lastCodeSnippet = { language, content: code };
+                    return;
+                }
+            }
+        }
+
+        function renderChat() {
+            els.chatHistory.innerHTML = '';
+            state.chatHistory.forEach(message => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'message ' + message.role;
+                const bubble = document.createElement('div');
+                bubble.className = 'bubble';
+                if (message.pending) {
+                    bubble.textContent = message.content;
+                } else {
+                    bubble.appendChild(buildMessageContent(message.content));
+                }
+                wrapper.appendChild(bubble);
+                els.chatHistory.appendChild(wrapper);
+            });
+            els.chatHistory.scrollTop = els.chatHistory.scrollHeight;
+        }
+
+        function buildMessageContent(text) {
+            const container = document.createElement('div');
+            const segments = text.split('```');
+            segments.forEach((segment, index) => {
+                if (segment.length === 0) {
+                    return;
+                }
+                if (index % 2 === 0) {
+                    const paragraph = document.createElement('div');
+                    paragraph.textContent = segment;
+                    container.appendChild(paragraph);
+                } else {
+                    let language = 'text';
+                    let codeText = segment;
+                    const newlineIndex = segment.indexOf('\n');
+                    if (newlineIndex !== -1) {
+                        const possibleLanguage = segment.slice(0, newlineIndex).trim();
+                        language = possibleLanguage || 'text';
+                        codeText = segment.slice(newlineIndex + 1);
+                    }
+                    const pre = document.createElement('pre');
+                    pre.className = 'code-block syntax';
+                    pre.dataset.language = language;
+                    const codeElement = document.createElement('code');
+                    codeElement.innerHTML = highlightCode(codeText, language);
+                    pre.appendChild(codeElement);
+                    container.appendChild(pre);
+                }
+            });
+            return container;
+        }
+
+        function highlightCode(code, language) {
+            if (!language) {
+                return escapeHtml(code);
+            }
+            const lower = language.toLowerCase();
+            if (lower === 'python' || lower === 'py') {
+                return highlightPython(code);
+            }
+            return escapeHtml(code);
+        }
+
+        function highlightPython(code) {
+            const keywords = new Set(['def', 'class', 'return', 'if', 'elif', 'else', 'for', 'while', 'import', 'from', 'as', 'try', 'except', 'with', 'yield', 'lambda', 'true', 'false', 'none']);
+            let result = '';
+            let token = '';
+            let expectName = false;
+            const doubleQuote = String.fromCharCode(34);
+            const singleQuote = String.fromCharCode(39);
+
+            function flushToken() {
+                if (!token) {
+                    return;
+                }
+                const lowerToken = token.toLowerCase();
+                const escaped = escapeHtml(token);
+                if (expectName) {
+                    result += '<span class="fn">' + escaped + '</span>';
+                    expectName = false;
+                } else if (keywords.has(lowerToken)) {
+                    result += '<span class="kw">' + escaped + '</span>';
+                    if (lowerToken === 'def' || lowerToken === 'class') {
+                        expectName = true;
+                    }
+                } else if (!Number.isNaN(Number(token))) {
+                    result += '<span class="num">' + escaped + '</span>';
+                } else {
+                    result += escaped;
+                }
+                token = '';
+            }
+
+            for (let index = 0; index < code.length; index += 1) {
+                const ch = code[index];
+                if (ch === '\r') {
+                    continue;
+                }
+                if (ch === '\n') {
+                    flushToken();
+                    result += '\n';
+                    expectName = false;
+                    continue;
+                }
+                if (ch === ' ' || ch === '\t') {
+                    flushToken();
+                    result += ch;
+                    continue;
+                }
+                if (ch === '#') {
+                    flushToken();
+                    let comment = '';
+                    let pointer = index;
+                    while (pointer < code.length && code[pointer] !== '\n') {
+                        comment += code[pointer];
+                        pointer += 1;
+                    }
+                    result += '<span class="com">' + escapeHtml(comment) + '</span>';
+                    index = pointer - 1;
+                    continue;
+                }
+                if (ch === doubleQuote || ch === singleQuote) {
+                    flushToken();
+                    const quote = ch;
+                    let str = quote;
+                    let pointer = index + 1;
+                    while (pointer < code.length && code[pointer] !== quote) {
+                        str += code[pointer];
+                        pointer += 1;
+                    }
+                    if (pointer < code.length) {
+                        str += code[pointer];
+                        index = pointer;
+                    } else {
+                        index = pointer - 1;
+                    }
+                    result += '<span class="str">' + escapeHtml(str) + '</span>';
+                    continue;
+                }
+                if (isWordChar(ch)) {
+                    token += ch;
+                    continue;
+                }
+                flushToken();
+                result += escapeHtml(ch);
+            }
+            flushToken();
+            return result;
+        }
+
+        function isWordChar(ch) {
+            const codePoint = ch.charCodeAt(0);
+            return (codePoint >= 48 && codePoint <= 57) || (codePoint >= 65 && codePoint <= 90) || (codePoint >= 97 && codePoint <= 122) || ch === '_';
+        }
+
+        function escapeHtml(str) {
+            let output = '';
+            for (let i = 0; i < str.length; i += 1) {
+                const ch = str[i];
+                if (ch === '&') {
+                    output += '&amp;';
+                } else if (ch === '<') {
+                    output += '&lt;';
+                } else if (ch === '>') {
+                    output += '&gt;';
+                } else {
+                    output += ch;
+                }
+            }
+            return output;
+        }
+        async function testAISnippet() {
+            if (!state.lastCodeSnippet) {
+                notify('No code snippet available to test.', 'warn');
+                return;
+            }
+            const endpoint = els.sandboxEndpoint.value.trim();
+            if (!endpoint) {
+                notify('Specify the sandbox endpoint URL first.', 'warn');
+                return;
+            }
+            try {
+                const payload = {
+                    language: state.lastCodeSnippet.language,
+                    code: state.lastCodeSnippet.content,
+                    metadata: {
+                        requestedAt: new Date().toISOString(),
+                        config: state.config
+                    }
+                };
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const resultText = await response.text();
+                const sandboxMessage = 'Sandbox Response:\n\n```text\n' + resultText + '\n```';
+                notify('Sandbox response received. Check chat for details.');
+                state.chatHistory.push({ role: 'assistant', content: sandboxMessage });
+                renderChat();
+            } catch (error) {
+                console.error('Sandbox request failed', error);
+                notify('Failed to reach sandbox endpoint.', 'error');
+                state.chatHistory.push({ role: 'assistant', content: 'Sandbox Error: ' + error.message });
+                renderChat();
+            }
+        }
+
+        function initEventListeners() {
+            els.aggression.addEventListener('input', handleAggressionChange);
+            els.saveConfig.addEventListener('click', persistConfig);
+            els.loadConfig.addEventListener('click', loadPersistedConfig);
+            els.executeTrade.addEventListener('click', () => simulateTrade());
+            els.sendMessage.addEventListener('click', sendChatMessage);
+            els.chatInput.addEventListener('keydown', event => {
+                if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                    event.preventDefault();
+                    sendChatMessage();
+                }
+            });
+            els.testAI.addEventListener('click', testAISnippet);
+            window.addEventListener('beforeunload', () => {
+                stopMockStream();
+            });
+        }
+
+        function bootstrap() {
+            const raw = localStorage.getItem(LS_KEY);
+            if (raw) {
+                try {
+                    const parsed = JSON.parse(raw);
+                    state.config = { ...state.config, ...parsed };
+                } catch (error) {
+                    console.warn('Could not parse stored config', error);
+                }
+            }
+            refreshForm();
+            startMockStream();
+            initEventListeners();
+            notify('Mock trading engine initialized.');
+        }
+
+        bootstrap();
+    </script>
+</body>
+</html>
