@@ -70,14 +70,15 @@ All runtime parameters are defined in `config/config.json`.
 - `feed.*`: Parameters controlling the deterministic synthetic price stream.
 - `strategy.fast_window` & `slow_window`: Window sizes for the moving averages.
 - `risk.*`: Constraints on drawdown, stop-loss trigger, and position sizing.
-- `simulation.*`: Paper trading settings such as starting cash and trading fees.
+- `execution.*`: Paper trading settings such as starting cash and trading fees.
+- `monitoring.*`: Toggles for structured logging and Prometheus metrics.
 
 ## Usage
 
-After installation, run the bot in paper mode:
+After installation, run the modular engine in paper mode:
 
 ```bash
-python -m core.bot --config config/config.json --mode paper
+python -m croc_bot.orchestration.cli --config config/config.json
 ```
 
 ## Testing
