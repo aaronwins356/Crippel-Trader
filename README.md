@@ -45,6 +45,14 @@ cd croc-bot/backend
 
 Models are stored under `backend/storage/models/` and the active model is controlled by an atomic symlink. The runtime hot-reloads whenever the symlink changes.
 
+## AI Self-Reconfiguration & Local Simulation Mode
+
+- Set `MODE=AI_SIMULATION` (or `CROC_MODE=AI_SIMULATION`) in `.env` to run without exchange credentials.
+- If you request live trading against Kraken without providing API keys, the backend automatically falls back to simulation and prints `⚙️ Running in AI Simulation Mode` during startup.
+- The bot uses a stochastic price generator and logs parameter adaptations to both the console and `logs/ai_simulation.log`.
+- Use `GET /mode` to inspect the current mode and `POST /mode` with `{ "mode": "AI_SIMULATION" }` or `{ "mode": "LIVE_TRADING" }` to switch at runtime.
+- Re-enable Kraken live trading by setting `CROC_MODE=live` (or posting `LIVE_TRADING`) and providing `EXCHANGE=kraken`, `API_KEY`, `API_SECRET`, and (optionally) `API_PASSPHRASE`.
+
 ## Dashboard Setup
 
 ```bash

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import abc
 import itertools
-from typing import Optional
+from typing import Any, Optional
 
 import numpy as np
 
@@ -33,6 +33,11 @@ class BaseStrategy(abc.ABC):
     def new_order(self, **kwargs) -> Order:
         order_id = f"{self.config.name}-{next(self._order_seq)}"
         return Order(id=order_id, **kwargs)
+
+    def configure(self, params: dict[str, Any]) -> None:
+        """Update strategy parameters at runtime."""
+
+        self.config.params.update(params)
 
 
 __all__ = ["BaseStrategy"]

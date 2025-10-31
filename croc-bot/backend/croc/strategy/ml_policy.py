@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import Optional
+from typing import Mapping, Optional
 
 import numpy as np
 
@@ -93,6 +93,13 @@ class MLPolicyStrategy(BaseStrategy):
                 order_type=OrderType.MARKET,
             )
         return None
+
+    def configure(self, params: Mapping[str, float]) -> None:
+        super().configure(params)
+        if "order_size" in params:
+            self.order_size = float(params["order_size"])
+        if "threshold" in params:
+            self.threshold = float(params["threshold"])
 
     def _predict_sync(self, features: np.ndarray) -> float:
         if self._torch_module is not None:
