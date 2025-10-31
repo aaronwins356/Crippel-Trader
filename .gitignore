@@ -1,10 +1,35 @@
+# Python
 __pycache__/
 *.py[cod]
-*.log
+*.so
+*.egg-info/
+.eggs/
+.python-version
 .env
-.venv/
-.pytest_cache/
+.env.*
+.cache/
 .mypy_cache/
-.DS_Store
-.idea/
+.pytest_cache/
+.hypothesis/
+
+# Node
+node_modules/
+.pnp.cjs
+.pnp.loader.mjs
+dist/
+*.log
+
+# Models & data
+croc-bot/backend/models/
+!croc-bot/backend/models/.gitkeep
+croc-bot/backend/storage/**/*.parquet
+croc-bot/backend/storage/**/*.csv
+
+# VSCode & IDE
 .vscode/
+.idea/
+.DS_Store
+
+# Coverage
+htmlcov/
+.coverage
