@@ -85,3 +85,24 @@ asyncio.run(run_live_loop(
 
 This blueprint provides the scaffolding for incremental adoption without
 breaking current behavior.
+
+## AI Code Refactor Agent
+
+An optional `ai_agent` package embeds an autonomous developer workflow inside
+the bot. The `AICodeRefactorAgent` class coordinates a closed loop that:
+
+1. **Monitors** structured JSON logs and metrics snapshots for anomalies such as
+   repeated exceptions or latency spikes.
+2. **Analyzes** affected code using an LLM client implementation and a
+   `CodebaseInspector` that extracts the relevant source context.
+3. **Proposes** fixes as unified diffs via the LLM integration. Patches include
+   human-readable rationales and a confidence score.
+4. **Validates** proposed changes inside an isolated workspace by compiling
+   modified modules and executing configurable test commands (default: `pytest`).
+5. **Applies** approved diffs to the repository when `apply_changes=True` in the
+   agent configuration.
+
+All intermediate decisions, including rejected patches, are logged for human
+review. The agent persists issue fingerprints in memory during a session to
+avoid redundant analysis and integrates with the monitoring stack by reading the
+same log and metrics outputs produced by the runtime engine.
