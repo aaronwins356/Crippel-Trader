@@ -16,6 +16,8 @@ class SimpleRiskConfig(RiskConfig):
     stop_loss_pct: float
     position_size_pct: float
     max_position_value: float
+    daily_loss_limit: float | None = None
+    probation_position_pct: float | None = None
 
     def __post_init__(self) -> None:
         if not 0 < self.max_drawdown < 1:
@@ -26,6 +28,11 @@ class SimpleRiskConfig(RiskConfig):
             raise ValueError("position_size_pct must be between 0 and 1")
         if self.max_position_value <= 0:
             raise ValueError("max_position_value must be positive")
+        if self.daily_loss_limit is not None and self.daily_loss_limit <= 0:
+            raise ValueError("daily_loss_limit must be positive when provided")
+        if self.probation_position_pct is not None:
+            if not 0 < self.probation_position_pct <= 1:
+                raise ValueError("probation_position_pct must be between 0 and 1")
 
 
 class SimpleRiskManager(BaseRiskManager):
@@ -36,6 +43,11 @@ class SimpleRiskManager(BaseRiskManager):
         self._config = config
 
     def evaluate(self, action: TradeAction, market: MarketData, portfolio: PortfolioState) -> TradeAction:
+        if self._config.daily_loss_limit is not None:
+            equity_loss = portfolio.peak_equity - portfolio.equity
+            if equity_loss >= self._config.daily_loss_limit:
+                return TradeAction(signal=TradeSignal.HOLD, metadata={"reason": "daily_loss_limit"})
+
         if portfolio.drawdown >= self._config.max_drawdown:
             return TradeAction(signal=TradeSignal.HOLD, metadata={"reason": "max_drawdown"})
 
@@ -52,7 +64,7 @@ class SimpleRiskManager(BaseRiskManager):
         if action.signal == TradeSignal.HOLD:
             return TradeAction(signal=TradeSignal.HOLD, metadata=action.metadata)
 
-        allowed_notional = self._determine_notional_limit(portfolio)
+        allowed_notional = self._determine_notional_limit(action, portfolio)
         if allowed_notional <= 0:
             return TradeAction(signal=TradeSignal.HOLD, metadata={"reason": "no_capital"})
 
@@ -77,7 +89,12 @@ class SimpleRiskManager(BaseRiskManager):
 
         return TradeAction(signal=TradeSignal.HOLD, metadata={"reason": "unknown_signal"})
 
-    def _determine_notional_limit(self, portfolio: PortfolioState) -> float:
-        equity_limit = portfolio.equity * self._config.position_size_pct
+    def _determine_notional_limit(self, action: TradeAction, portfolio: PortfolioState) -> float:
+        position_pct = self._config.position_size_pct
+        stage = (action.metadata or {}).get("deployment_stage") if action.metadata else None
+        if stage == "probation" and self._config.probation_position_pct is not None:
+            position_pct = min(position_pct, self._config.probation_position_pct)
+
+        equity_limit = portfolio.equity * position_pct
         notional = min(equity_limit, self._config.max_position_value)
         return max(notional, 0.0)
