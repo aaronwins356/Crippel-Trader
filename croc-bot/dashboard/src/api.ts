@@ -57,6 +57,49 @@ export function setRiskLimits(risk: { max_position: number; max_notional: number
   });
 }
 
+export function triggerTraining(payload: {
+  algo: string;
+  seed: number;
+  epochs: number;
+  learning_rate: number;
+  train_since?: string | null;
+  train_until?: string | null;
+}) {
+  return request("/rl/train", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function triggerEvaluation(payload: { version?: string | null; shadow?: boolean }) {
+  return request("/rl/evaluate", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function triggerPromotion(payload: { version: string; metrics: Record<string, number> }) {
+  return request("/rl/promote", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function triggerRollback(version?: string) {
+  return request("/rl/rollback", {
+    method: "POST",
+    body: JSON.stringify({ version: version ?? null }),
+  });
+}
+
+export function fetchRegistry() {
+  return request("/rl/registry");
+}
+
+export function fetchShadowStatus() {
+  return request("/rl/shadow_status");
+}
+
 export function aiSuggest(payload: { issue: string; contextFiles?: string[] }) {
   return request("/ai/suggest", {
     method: "POST",

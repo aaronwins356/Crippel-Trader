@@ -7,6 +7,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
+from datetime import timedelta
+
 from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
@@ -27,6 +29,9 @@ from .runtime.metrics import MetricsCollector
 from .runtime.scheduler import Scheduler
 from .storage.datastore import DataStore
 from .storage.model_registry import ModelRegistry
+from .rl.schedule import LearningSchedule
+from .rl.promote import Promoter
+from .rl.train import TrainConfig
 from .strategy.ml_policy import MLPolicyStrategy
 from .strategy.rule_sma import SMAStrategy
 from .strategy.base import BaseStrategy
@@ -42,7 +47,7 @@ class AppContext:
         self.metrics = MetricsCollector()
         self.datastore = DataStore(settings.storage)
         self.registry = ModelRegistry(Path(settings.storage.base_dir) / "models")
-        self.scheduler = Scheduler()
+        self.scheduler = Scheduler(self.bus)
         self.feature_pipeline = FeaturePipeline(
             fast_window=int(settings.strategy.params.get("fast_window", 12)),
             slow_window=int(settings.strategy.params.get("slow_window", 26)),
@@ -50,7 +55,7 @@ class AppContext:
         )
         self.feed = self._build_feed()
         self.broker = self._build_broker()
-        self.risk = RiskManager(settings.risk)
+        self.risk = RiskManager(settings.risk, bus=self.bus)
         self.strategy = self._build_strategy()
         self.engine = Engine(
             settings,
@@ -64,7 +69,21 @@ class AppContext:
             feature_pipeline=self.feature_pipeline,
             model_registry=self.registry,
         )
-        self.scheduler.add_job(30.0, self._emit_metrics)
+        self.promoter = Promoter(self.registry, bus=self.bus)
+        self.learning = LearningSchedule(
+            settings,
+            registry=self.registry,
+            promoter=self.promoter,
+            bus=self.bus,
+            risk=self.risk,
+        )
+        self.scheduler.add_job(timedelta(seconds=30), self._emit_metrics, name="metrics.emit")
+        self.scheduler.add_job(timedelta(hours=24), self.learning.run_training, name="rl.train")
+        self.scheduler.add_job(
+            timedelta(days=7),
+            lambda: self.learning.run_evaluation(shadow=True),
+            name="rl.evaluate",
+        )
         repo_root = Path(__file__).resolve().parents[3]
         log_path = Path(settings.storage.base_dir) / "croc.log"
         self.ai = AIEngineerService(
@@ -225,6 +244,25 @@ def create_app() -> FastAPI:
         diff: str
         allow_add_dep: bool = Field(default=False)
 
+    class TrainRequest(BaseModel):
+        algo: str = "ppo"
+        seed: int = 42
+        epochs: int = 10
+        lr: float = Field(default=3e-4, alias="learning_rate")
+        train_since: datetime | None = None
+        train_until: datetime | None = None
+
+    class EvaluateRequest(BaseModel):
+        version: str | None = None
+        shadow: bool = False
+
+    class PromoteRequest(BaseModel):
+        version: str
+        metrics: dict[str, float]
+
+    class RollbackRequest(BaseModel):
+        version: str | None = None
+
     @app.post("/ai/suggest")
     async def ai_suggest(payload: AISuggestRequest, ctx: AppContext = Depends(lambda: get_context(app))):
         suggestion = await ctx.ai.suggest(payload.issue, payload.context_files)
@@ -251,6 +289,63 @@ def create_app() -> FastAPI:
     @app.get("/ai/status")
     async def ai_status(ctx: AppContext = Depends(lambda: get_context(app))):
         return await ctx.ai.status()
+
+    @app.post("/rl/train")
+    async def rl_train(payload: TrainRequest, ctx: AppContext = Depends(lambda: get_context(app))):
+        config = TrainConfig(
+            algo=payload.algo,
+            seed=payload.seed,
+            epochs=payload.epochs,
+            learning_rate=payload.lr,
+            train_since=payload.train_since,
+            train_until=payload.train_until,
+        )
+        result = await ctx.learning.run_training(config)
+        return {
+            "version": result.version,
+            "metadata": result.metadata,
+        }
+
+    @app.post("/rl/evaluate")
+    async def rl_evaluate(payload: EvaluateRequest, ctx: AppContext = Depends(lambda: get_context(app))):
+        result = await ctx.learning.run_evaluation(version=payload.version, shadow=payload.shadow)
+        response: dict[str, object] = {"metrics": result.metrics}
+        if result.compare_path:
+            response["compare_path"] = str(result.compare_path)
+        if result.log_path:
+            response["shadow_log"] = str(result.log_path)
+        return response
+
+    @app.post("/rl/promote")
+    async def rl_promote(payload: PromoteRequest, ctx: AppContext = Depends(lambda: get_context(app))):
+        gate = await ctx.learning.run_promotion(payload.version, payload.metrics)
+        return {"passed": gate.passed, "reasons": gate.reasons}
+
+    @app.post("/rl/rollback")
+    async def rl_rollback(payload: RollbackRequest, ctx: AppContext = Depends(lambda: get_context(app))):
+        rolled = await ctx.learning.rollback(payload.version)
+        return {"active_version": rolled.version}
+
+    @app.get("/rl/registry")
+    async def rl_registry(ctx: AppContext = Depends(lambda: get_context(app))):
+        versions = [
+            {
+                "version": model.version,
+                "created_at": model.created_at.isoformat(),
+                "code_sha": model.code_sha,
+                "metrics": model.metrics,
+                "config": model.config,
+                "data_span": model.data_span,
+                "path": str(model.path),
+            }
+            for model in ctx.registry.list_versions()
+        ]
+        active = ctx.registry.active_version()
+        return {"active": active.version if active else None, "versions": versions}
+
+    @app.get("/rl/shadow_status")
+    async def rl_shadow_status(ctx: AppContext = Depends(lambda: get_context(app))):
+        return ctx.learning.get_shadow_status() or {}
 
     @app.websocket("/ws/stream")
     async def stream(websocket: WebSocket):

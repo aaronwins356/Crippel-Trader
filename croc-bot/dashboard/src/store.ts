@@ -8,6 +8,12 @@ import {
   setRiskLimits,
   startEngine,
   stopEngine,
+  triggerTraining,
+  triggerEvaluation,
+  triggerPromotion,
+  triggerRollback,
+  fetchRegistry,
+  fetchShadowStatus,
 } from "./api";
 
 export interface Metrics {
@@ -48,6 +54,8 @@ interface DashboardState {
   ticks: Tick[];
   config: any | null;
   riskLimits: { max_position: number; max_notional: number; max_daily_drawdown: number } | null;
+  registry: { active: string | null; versions: Array<Record<string, any>> } | null;
+  shadowStatus: Record<string, any> | null;
   engineRunning: boolean;
   killSwitch: boolean;
   mode: "paper" | "live";
@@ -59,31 +67,54 @@ interface DashboardState {
   toggleKillSwitch: (active: boolean) => Promise<void>;
   activateModel: (path: string) => Promise<void>;
   updateRisk: (risk: { max_position: number; max_notional: number; max_daily_drawdown: number }) => Promise<void>;
+  refreshRegistry: () => Promise<void>;
+  trainModel: (payload: {
+    algo: string;
+    seed: number;
+    epochs: number;
+    learning_rate: number;
+    train_since?: string | null;
+    train_until?: string | null;
+  }) => Promise<void>;
+  evaluateModel: (payload: { version?: string | null; shadow?: boolean }) => Promise<any>;
+  promoteModel: (payload: { version: string; metrics: Record<string, number> }) => Promise<any>;
+  rollbackModel: (version?: string) => Promise<void>;
+  refreshShadowStatus: () => Promise<void>;
 }
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 const WS_BASE = API_BASE.replace(/^http/, "ws");
 
 export const useDashboardStore = create<DashboardState>()((set, get) => ({
-    metrics: null,
-    fills: [],
-    ticks: [],
-    config: null,
-    riskLimits: null,
-    engineRunning: false,
-    killSwitch: false,
-    mode: "paper",
-    connected: false,
-    loadInitial: async () => {
-      const [config, metrics, health] = await Promise.all([fetchConfig(), fetchMetrics(), fetchHealth()]);
-      set({
-        config,
-        metrics,
-        engineRunning: Boolean(health?.engine_running),
-        mode: (health?.mode as "paper" | "live") ?? "paper",
-        riskLimits: config?.risk ?? null,
-      });
-    },
+  metrics: null,
+  fills: [],
+  ticks: [],
+  config: null,
+  riskLimits: null,
+  registry: null,
+  shadowStatus: null,
+  engineRunning: false,
+  killSwitch: false,
+  mode: "paper",
+  connected: false,
+  loadInitial: async () => {
+    const [config, metrics, health, registry, shadow] = await Promise.all([
+      fetchConfig(),
+      fetchMetrics(),
+      fetchHealth(),
+      fetchRegistry(),
+      fetchShadowStatus().catch(() => ({})),
+    ]);
+    set({
+      config,
+      metrics,
+      engineRunning: Boolean(health?.engine_running),
+      mode: (health?.mode as "paper" | "live") ?? "paper",
+      riskLimits: config?.risk ?? null,
+      registry: registry ?? null,
+      shadowStatus: shadow ?? null,
+    });
+  },
     connectStreams: () => {
       if (get().connected) {
         return;
@@ -112,23 +143,51 @@ export const useDashboardStore = create<DashboardState>()((set, get) => ({
       });
       set({ connected: true });
     },
-    start: async () => {
-      await startEngine();
-      set({ engineRunning: true });
-    },
-    stop: async () => {
-      await stopEngine();
-      set({ engineRunning: false });
-    },
-    toggleKillSwitch: async (active: boolean) => {
-      await setKillSwitch(active);
-      set({ killSwitch: active });
-    },
-    activateModel: async (path: string) => {
-      await setModel(path);
-    },
-    updateRisk: async (risk) => {
-      const updated = await setRiskLimits(risk);
-      set({ riskLimits: updated });
-    },
+  start: async () => {
+    await startEngine();
+    set({ engineRunning: true });
+  },
+  stop: async () => {
+    await stopEngine();
+    set({ engineRunning: false });
+  },
+  toggleKillSwitch: async (active: boolean) => {
+    await setKillSwitch(active);
+    set({ killSwitch: active });
+  },
+  activateModel: async (path: string) => {
+    await setModel(path);
+  },
+  updateRisk: async (risk) => {
+    const updated = await setRiskLimits(risk);
+    set({ riskLimits: updated });
+  },
+  refreshRegistry: async () => {
+    const registry = await fetchRegistry();
+    set({ registry });
+  },
+  trainModel: async (payload) => {
+    await triggerTraining(payload);
+    await get().refreshRegistry();
+  },
+  evaluateModel: async (payload) => {
+    const result = await triggerEvaluation(payload);
+    if (payload.shadow) {
+      await get().refreshShadowStatus();
+    }
+    return result;
+  },
+  promoteModel: async (payload) => {
+    const result = await triggerPromotion(payload);
+    await get().refreshRegistry();
+    return result;
+  },
+  rollbackModel: async (version) => {
+    await triggerRollback(version);
+    await get().refreshRegistry();
+  },
+  refreshShadowStatus: async () => {
+    const status = await fetchShadowStatus();
+    set({ shadowStatus: status });
+  },
 }));
