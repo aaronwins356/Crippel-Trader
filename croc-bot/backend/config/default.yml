@@ -1,0 +1,20 @@
+mode: paper
+feed:
+  source: replay
+  symbol: BTC/USDT
+strategy:
+  name: rule_sma
+  params:
+    fast_window: 12
+    slow_window: 26
+    order_size: 0.01
+risk:
+  max_position: 1.5
+  max_notional: 50000
+  max_daily_drawdown: 1000
+execution:
+  broker: paper
+  slippage_bps: 1.0
+  fee_bps: 1.0
+storage:
+  base_dir: ./storage

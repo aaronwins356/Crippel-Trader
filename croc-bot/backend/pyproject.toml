@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=65", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "croc-bot"
+version = "0.1.0"
+description = "High-performance internal trading system"
+readme = "README.md"
+authors = [{name = "Croc Bot Team"}]
+license = {text = "MIT"}
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.109",
+    "uvicorn[standard]>=0.24",
+    "orjson>=3.9",
+    "pydantic>=2.5",
+    "pydantic-settings>=2.1",
+    "python-dotenv>=1.0",
+    "numpy>=1.26",
+    "pandas>=2.1",
+    "numba>=0.58",
+    "ccxt>=4.1",
+    "prometheus-client>=0.19",
+    "tenacity>=8.2",
+    "aiofiles>=23.2",
+    "aiohttp>=3.9",
+    "websockets>=12.0",
+    "pyarrow>=14.0",
+    "rich>=13.7",
+    "stable-baselines3>=2.1",
+    "gymnasium>=0.29",
+    "torch>=2.1",
+    "onnxruntime>=1.16",
+    "typer>=0.9",
+    "filelock>=3.13"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-asyncio>=0.23",
+    "httpx>=0.25",
+    "ruff>=0.1.8"
+]
+
+[tool.setuptools.package-dir]
+"" = "croc"
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "I", "UP", "B", "C4"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+

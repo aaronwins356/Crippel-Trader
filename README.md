@@ -1,89 +1,69 @@
-# CrocBot 🐊
+# croc-bot
 
-**CrocBot** is a production-ready research sandbox for systematic traders. Built on Python 3.11+, it delivers a clean, modular
-architecture for experimenting with quantitative ideas while keeping simulations deterministic, logs transparent, and risk controls
-a front-and-center priority. This project is provided **for educational purposes only** and should not be treated as financial
-advice.
+croc-bot is a high-performance, internal-use trading research system featuring a FastAPI backend and a Vite/React/Tailwind dashboard. The stack emphasises deterministic configs, strict risk management, and reinforcement learning workflows without any external SaaS dependencies.
 
-## 🚀 Why CrocBot
-- Config-driven workflow that boots in minutes
-- Deterministic synthetic market feed for reliable experiments
-- Moving-average crossover reference strategy with guardrails
-- Built-in risk controls for drawdowns, stop-losses, and sizing
-- Paper trading ledger that tracks balance, equity, and PnL
-- Extension hooks for ML/RL models, execution adapters, and AI copilots
+## Project Layout
 
-## 🧠 System Architecture at a Glance
-- `data/` – ingestion utilities and feature engineering helpers
-- `models/` – reusable model interfaces and RL adapters
-- `strategies/` – strategy factories that stay model-aware
-- `executors/` – async order routing and venue abstractions
-- `pipelines/` – training, evaluation, and deployment flows
-- `orchestration/` – event loops that coordinate data, inference, and orders
-- `utils/` – shared logging, configuration, metrics, and dependency injection
-
-For deeper guidance, visit `docs/ARCHITECTURE.md`.
-
-## 🧩 Prerequisites
-- Python 3.11+
-- Recommended: `virtualenv` or `venv`
-
-## ✅ Quick Launch Guide
-1. **Create an isolated environment**
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
-   ```
-2. **Install CrocBot and developer tooling**
-   ```bash
-   pip install -e .[dev]
-   ```
-3. **Review or tweak the simulation config** in `config/config.json` (see the breakdown below).
-4. **Run the paper-trading engine**
-   ```bash
-   python -m croc_bot.orchestration.cli --config config/config.json
-   ```
-5. **Inspect logs and results** in the console output to validate strategy behaviour.
-
-## 🛠 Configuration Cheatsheet
-`config/config.json` centralizes all runtime knobs:
-
-```json
-{
-  "trading": { "max_steps": 500 },
-  "feed": {
-    "symbol": "FAKE-USD",
-    "interval_seconds": 1,
-    "initial_price": 100.0,
-    "volatility": 0.5,
-    "seed": 42
-  },
-  "strategy": { "fast_window": 5, "slow_window": 12 },
-  "risk": {
-    "max_drawdown": 0.2,
-    "stop_loss_pct": 0.05,
-    "position_size_pct": 0.1,
-    "max_position_value": 1000.0
-  },
-  "simulation": {
-    "starting_balance": 10000.0,
-    "trading_fee_bps": 5
-  }
-}
+```
+croc-bot/
+  backend/      # FastAPI app, runtime engine, RL training
+  dashboard/    # React + Vite + Tailwind local monitoring UI
+  Makefile      # helper targets for dev/test/train/backtest
 ```
 
-Key fields:
-- `trading.max_steps` – maximum number of ticks to simulate
-- `feed.*` – parameters for the deterministic synthetic price stream
-- `strategy.fast_window` & `strategy.slow_window` – moving-average window sizes
-- `risk.*` – drawdown, stop-loss, sizing, and notional caps
-- `simulation.*` – paper trading balance and fee assumptions
+## Prerequisites
 
-## 🧪 Run Tests
+- Python 3.11+
+- Node.js 18+
+
+## Backend Setup
+
 ```bash
+cd croc-bot/backend
+python -m pip install -U pip
+python -m pip install -e .[dev]
+cp .env.example .env
+python -m croc.app
+```
+
+The backend defaults to paper trading with a synthetic replay feed. To enable live trading, set `CROC_MODE=live` and provide `EXCHANGE`, `API_KEY`, and `API_SECRET` in the environment. Live mode is disabled unless all credentials are present.
+
+### Testing
+
+```bash
+cd croc-bot/backend
 pytest
 ```
 
-## ⚠️ Disclaimer
-CrocBot simplifies market structure and omits real-world concerns such as latency, slippage, liquidity, and exchange
-connectivity. Do not deploy it for live trading without extensive enhancements, validations, and risk reviews.
+### RL Training & Evaluation
+
+```bash
+cd croc-bot/backend
+./scripts/train_rl.sh --total-timesteps 50000
+./scripts/backtest.sh --episodes 10
+```
+
+Models are stored under `backend/storage/models/` and the active model is controlled by an atomic symlink. The runtime hot-reloads whenever the symlink changes.
+
+## Dashboard Setup
+
+```bash
+cd croc-bot/dashboard
+npm install
+npm run dev
+```
+
+The dashboard connects to the local FastAPI service (`http://localhost:8000`) and streams ticks, fills, and metrics over WebSockets.
+
+## Make Targets
+
+```bash
+make dev        # run the FastAPI app
+make test       # run pytest suite
+make train      # launch PPO training (Stable-Baselines3)
+make backtest   # evaluate active model
+```
+
+## License
+
+MIT
