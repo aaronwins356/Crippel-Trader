@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Mapping, Optional
 
 import numpy as np
 
@@ -37,6 +37,13 @@ class SMAStrategy(BaseStrategy):
                 order_type=OrderType.MARKET,
             )
         return None
+
+    def configure(self, params: Mapping[str, float]) -> None:
+        super().configure(params)
+        if "order_size" in params:
+            self.order_size = float(params["order_size"])
+        if "threshold" in params:
+            self.threshold = float(params["threshold"])
 
 
 __all__ = ["SMAStrategy"]

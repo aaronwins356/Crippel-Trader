@@ -8,6 +8,13 @@ strategy:
     fast_window: 12
     slow_window: 26
     order_size: 0.01
+simulation:
+  base_price: 30000
+  volatility: 0.002
+  interval_seconds: 1.0
+  reconfigure_interval_seconds: 60
+  min_order_size: 0.001
+  max_order_size: 0.05
 risk:
   max_position: 1.5
   max_notional: 50000

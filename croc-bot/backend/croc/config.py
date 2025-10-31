@@ -19,7 +19,7 @@ except ModuleNotFoundError:  # pragma: no cover - fallback for tests
             return json.loads(data)
 
     orjson = _Orjson()
-from pydantic import BaseModel, Field, ValidationError, model_validator
+from pydantic import AliasChoices, BaseModel, Field, ValidationError, field_validator, model_validator
 try:
     from pydantic_settings import BaseSettings, SettingsConfigDict
 except ModuleNotFoundError:  # pragma: no cover - fallback for tests
@@ -41,6 +41,26 @@ class TradingMode(str, Enum):
 
     PAPER = "paper"
     LIVE = "live"
+    AI_SIMULATION = "ai_simulation"
+
+    @property
+    def external_name(self) -> str:
+        if self is TradingMode.AI_SIMULATION:
+            return "AI_SIMULATION"
+        if self is TradingMode.LIVE:
+            return "LIVE_TRADING"
+        return "PAPER"
+
+    @classmethod
+    def from_external(cls, value: str) -> "TradingMode":
+        normalized = value.strip().lower()
+        if normalized in {"ai_simulation", "simulation", "ai"}:
+            return cls.AI_SIMULATION
+        if normalized in {"live", "live_trading"}:
+            return cls.LIVE
+        if normalized in {"paper", "paper_trading"}:
+            return cls.PAPER
+        raise ValueError(f"Unsupported trading mode: {value}")
 
 
 class FeedConfig(BaseModel):
@@ -85,13 +105,30 @@ class StorageConfig(BaseModel):
     trades: Path = Field(default=Path("./storage/trades"))
     metrics: Path = Field(default=Path("./storage/metrics"))
 
+class SimulationConfig(BaseModel):
+    """Parameters controlling the AI simulation mode."""
+
+    base_price: float = Field(default=30_000.0, gt=0)
+    volatility: float = Field(default=0.002, ge=0)
+    interval_seconds: float = Field(default=1.0, gt=0)
+    seed: Optional[int] = Field(default=None)
+    reconfigure_interval_seconds: float = Field(default=60.0, gt=0)
+    min_order_size: float = Field(default=0.001, gt=0)
+    max_order_size: float = Field(default=0.05, gt=0)
+    max_threshold: float = Field(default=50.0, ge=0)
+    threshold_jitter: float = Field(default=0.25, ge=0)
+    order_size_jitter: float = Field(default=0.002, ge=0)
+
 
 class Settings(BaseSettings):
     """Application settings loaded from env + config file."""
 
     model_config = SettingsConfigDict(env_prefix="CROC_", env_file=".env", env_file_encoding="utf-8")
 
-    mode: TradingMode = Field(default=TradingMode.PAPER)
+    mode: TradingMode = Field(
+        default=TradingMode.PAPER,
+        validation_alias=AliasChoices("MODE", "CROC_MODE"),
+    )
     log_level: str = Field(default="INFO")
     config_file: Optional[Path] = Field(default=None, validation_alias="config_file")
     model_active: Optional[Path] = None
@@ -100,11 +137,25 @@ class Settings(BaseSettings):
     risk: RiskLimits = Field(default_factory=RiskLimits)
     execution: ExecutionConfig = Field(default_factory=ExecutionConfig)
     storage: StorageConfig = Field(default_factory=StorageConfig)
+    simulation: SimulationConfig = Field(default_factory=SimulationConfig)
 
     exchange: Optional[str] = None
     api_key: Optional[str] = Field(default=None, alias="API_KEY")
     api_secret: Optional[str] = Field(default=None, alias="API_SECRET")
     api_passphrase: Optional[str] = Field(default=None, alias="API_PASSPHRASE")
+    simulation_auto_reason: Optional[str] = Field(default=None, exclude=True)
+
+    @field_validator("mode", mode="before")
+    @classmethod
+    def _normalize_mode(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            try:
+                return TradingMode.from_external(value)
+            except ValueError:
+                lower = value.lower()
+                if lower in TradingMode._value2member_map_:
+                    return TradingMode(lower)
+        return value
 
     @model_validator(mode="after")
     def validate_mode(self) -> "Settings":
@@ -119,9 +170,21 @@ class Settings(BaseSettings):
                 if not value
             ]
             if missing:
-                raise ValueError(
-                    "Live trading requires credentials: " + ", ".join(missing)
-                )
+                exchange = (self.exchange or "").lower()
+                if exchange in {"", "kraken"}:
+                    self.mode = TradingMode.AI_SIMULATION
+                    self.feed.source = "simulation"
+                    self.execution.broker = "paper"
+                    self.simulation_auto_reason = (
+                        "Missing Kraken credentials: " + ", ".join(missing)
+                    )
+                else:
+                    raise ValueError(
+                        "Live trading requires credentials: " + ", ".join(missing)
+                    )
+        if self.mode is TradingMode.AI_SIMULATION:
+            self.feed.source = "simulation"
+            self.execution.broker = "paper"
         return self
 
     @classmethod
@@ -156,6 +219,11 @@ class Settings(BaseSettings):
         settings.storage.ticks.mkdir(parents=True, exist_ok=True)
         settings.storage.trades.mkdir(parents=True, exist_ok=True)
         settings.storage.metrics.mkdir(parents=True, exist_ok=True)
+        if settings.mode is TradingMode.AI_SIMULATION:
+            message = "⚙️ Running in AI Simulation Mode"
+            if settings.simulation_auto_reason:
+                message += f" ({settings.simulation_auto_reason})"
+            print(message)
         return settings
 
 
@@ -174,5 +242,6 @@ __all__ = [
     "RiskLimits",
     "ExecutionConfig",
     "StorageConfig",
+    "SimulationConfig",
     "load_settings",
 ]

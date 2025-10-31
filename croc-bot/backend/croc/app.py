@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
-
-from datetime import timedelta
 
 from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,12 +20,14 @@ from .bus import EventBus
 from .config import RiskLimits, Settings, TradingMode, load_settings
 from .data.feed_ccxt import CCXTFeed
 from .data.feed_replay import ReplayFeed
+from .data.feed_simulated import SimulatedFeed
 from .exec.broker_ccxt import CCXTBroker
 from .exec.broker_paper import PaperBroker
 from .risk.risk_manager import RiskManager
 from .runtime.engine import Engine
 from .runtime.metrics import MetricsCollector
 from .runtime.scheduler import Scheduler
+from .runtime.simulation import AISimulationController
 from .storage.datastore import DataStore
 from .storage.model_registry import ModelRegistry
 from .rl.schedule import LearningSchedule
@@ -48,6 +49,8 @@ class AppContext:
         self.datastore = DataStore(settings.storage)
         self.registry = ModelRegistry(Path(settings.storage.base_dir) / "models")
         self.scheduler = Scheduler(self.bus)
+        self._lifecycle_lock = asyncio.Lock()
+        self._started = False
         self.feature_pipeline = FeaturePipeline(
             fast_window=int(settings.strategy.params.get("fast_window", 12)),
             slow_window=int(settings.strategy.params.get("slow_window", 26)),
@@ -92,9 +95,28 @@ class AppContext:
             metrics_fetcher=self.metrics.rollup,
             bus=self.bus,
         )
+        self.simulation: AISimulationController | None = None
+        if self.settings.mode is TradingMode.AI_SIMULATION:
+            self.simulation = AISimulationController(
+                settings=self.settings,
+                metrics=self.metrics,
+                strategy=self.strategy,
+                bus=self.bus,
+            )
+            interval = timedelta(seconds=self.settings.simulation.reconfigure_interval_seconds)
+            self.scheduler.add_job(interval, self.simulation.reconfigure, name="simulation.reconfigure")
 
     def _build_feed(self):
         feed_cfg = self.settings.feed
+        if self.settings.mode is TradingMode.AI_SIMULATION or feed_cfg.source == "simulation":
+            sim_cfg = self.settings.simulation
+            return SimulatedFeed(
+                feed_cfg.symbol,
+                base_price=sim_cfg.base_price,
+                volatility=sim_cfg.volatility,
+                interval_seconds=sim_cfg.interval_seconds,
+                seed=sim_cfg.seed,
+            )
         if feed_cfg.source == "ccxt":
             if self.settings.mode is not TradingMode.LIVE:
                 raise RuntimeError("CCXT feed requires live mode")
@@ -113,7 +135,10 @@ class AppContext:
         return ReplayFeed(feed_cfg.symbol, path)
 
     def _build_broker(self):
-        if self.settings.execution.broker == "paper" or self.settings.mode == TradingMode.PAPER:
+        if (
+            self.settings.mode in {TradingMode.PAPER, TradingMode.AI_SIMULATION}
+            or self.settings.execution.broker == "paper"
+        ):
             return PaperBroker(
                 slippage_bps=self.settings.execution.slippage_bps,
                 fee_bps=self.settings.execution.fee_bps,
@@ -139,6 +164,24 @@ class AppContext:
         snapshot = await self.engine.metrics_snapshot()
         await self.bus.publish("metrics", snapshot.model_dump())
 
+    async def startup(self) -> None:
+        async with self._lifecycle_lock:
+            if self._started:
+                return
+            if self.settings.mode in {TradingMode.PAPER, TradingMode.AI_SIMULATION}:
+                await self.engine.start()
+            await self.scheduler.start()
+            self._started = True
+
+    async def shutdown(self) -> None:
+        async with self._lifecycle_lock:
+            if not self._started:
+                return
+            await self.engine.stop()
+            await self.scheduler.stop()
+            await self.bus.close()
+            self._started = False
+
 
 def get_context(app: FastAPI) -> AppContext:
     ctx: AppContext = app.state.ctx
@@ -150,15 +193,11 @@ async def lifespan(app: FastAPI):
     settings = load_settings()
     ctx = AppContext(settings)
     app.state.ctx = ctx
-    if settings.mode is TradingMode.PAPER:
-        await ctx.engine.start()
-    await ctx.scheduler.start()
+    await ctx.startup()
     try:
         yield
     finally:
-        await ctx.engine.stop()
-        await ctx.scheduler.stop()
-        await ctx.bus.close()
+        await ctx.shutdown()
 
 
 def create_app() -> FastAPI:
@@ -263,6 +302,9 @@ def create_app() -> FastAPI:
     class RollbackRequest(BaseModel):
         version: str | None = None
 
+    class ModeRequest(BaseModel):
+        mode: str
+
     @app.post("/ai/suggest")
     async def ai_suggest(payload: AISuggestRequest, ctx: AppContext = Depends(lambda: get_context(app))):
         suggestion = await ctx.ai.suggest(payload.issue, payload.context_files)
@@ -346,6 +388,35 @@ def create_app() -> FastAPI:
     @app.get("/rl/shadow_status")
     async def rl_shadow_status(ctx: AppContext = Depends(lambda: get_context(app))):
         return ctx.learning.get_shadow_status() or {}
+
+    @app.get("/mode")
+    async def read_mode(ctx: AppContext = Depends(lambda: get_context(app))):
+        return {"mode": ctx.settings.mode.external_name}
+
+    @app.post("/mode")
+    async def update_mode(payload: ModeRequest, ctx: AppContext = Depends(lambda: get_context(app))):
+        try:
+            target = TradingMode.from_external(payload.mode)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        if target is ctx.settings.mode:
+            return {"mode": ctx.settings.mode.external_name}
+        updated = ctx.settings.model_dump(mode="json")
+        updated["mode"] = target.value
+        new_settings = Settings.model_validate(updated)
+        if target is TradingMode.LIVE and new_settings.mode is not TradingMode.LIVE:
+            reason = new_settings.simulation_auto_reason or "credentials missing"
+            raise HTTPException(status_code=400, detail=f"Live trading unavailable: {reason}")
+        new_ctx = AppContext(new_settings)
+        try:
+            await ctx.shutdown()
+            app.state.ctx = new_ctx
+            await new_ctx.startup()
+        except Exception as exc:  # noqa: BLE001
+            app.state.ctx = ctx
+            await ctx.startup()
+            raise HTTPException(status_code=500, detail=f"Failed to switch mode: {exc}") from exc
+        return {"mode": new_ctx.settings.mode.external_name}
 
     @app.websocket("/ws/stream")
     async def stream(websocket: WebSocket):
