@@ -52,6 +52,12 @@ class DataStore:
                 "exposure",
                 "drawdown",
                 "latency_ms",
+                "loop_p99_ms",
+                "inference_p99_ms",
+                "error_rate",
+                "pnl_1h",
+                "pnl_1d",
+                "drawdown_1d",
             ],
             [
                 metrics.timestamp.isoformat(),
@@ -61,6 +67,12 @@ class DataStore:
                 metrics.exposure,
                 metrics.drawdown,
                 metrics.latency_ms,
+                metrics.loop_p99_ms,
+                metrics.inference_p99_ms,
+                metrics.error_rate,
+                metrics.pnl_1h,
+                metrics.pnl_1d,
+                metrics.drawdown_1d,
             ],
         )
 

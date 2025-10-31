@@ -1,0 +1,5 @@
+- Do not modify risk_manager invariants, capital guards, or broker credential handling
+- Do not touch authentication, API tokens, or secret loading
+- Preserve configuration schema compatibility and environment variable names
+- Maintain REST/WS response contracts used by the dashboard
+- No new external dependencies unless explicitly authorised

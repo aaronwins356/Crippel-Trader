@@ -10,8 +10,11 @@ from typing import Any
 from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
+from pydantic import BaseModel, ConfigDict, Field
 
 from . import __version__
+from .ai_engineer import AIEngineerService, PatchApplicationError
+from .ai_engineer.vcs import VCSOperationError
 from .bus import EventBus
 from .config import RiskLimits, Settings, TradingMode, load_settings
 from .data.feed_ccxt import CCXTFeed
@@ -62,6 +65,14 @@ class AppContext:
             model_registry=self.registry,
         )
         self.scheduler.add_job(30.0, self._emit_metrics)
+        repo_root = Path(__file__).resolve().parents[3]
+        log_path = Path(settings.storage.base_dir) / "croc.log"
+        self.ai = AIEngineerService(
+            repo_root=repo_root,
+            log_path=log_path,
+            metrics_fetcher=self.metrics.rollup,
+            bus=self.bus,
+        )
 
     def _build_feed(self):
         feed_cfg = self.settings.feed
@@ -202,6 +213,45 @@ def create_app() -> FastAPI:
         ctx.risk.limits = limits
         return limits.model_dump(mode="json")
 
+    class AISuggestRequest(BaseModel):
+        model_config = ConfigDict(populate_by_name=True)
+
+        issue: str
+        context_files: list[str] = Field(default_factory=list, alias="contextFiles")
+
+    class AIApplyRequest(BaseModel):
+        model_config = ConfigDict(populate_by_name=True)
+
+        diff: str
+        allow_add_dep: bool = Field(default=False)
+
+    @app.post("/ai/suggest")
+    async def ai_suggest(payload: AISuggestRequest, ctx: AppContext = Depends(lambda: get_context(app))):
+        suggestion = await ctx.ai.suggest(payload.issue, payload.context_files)
+        return suggestion.model_dump()
+
+    @app.post("/ai/apply")
+    async def ai_apply(payload: AIApplyRequest, ctx: AppContext = Depends(lambda: get_context(app))):
+        try:
+            report = await ctx.ai.apply(payload.diff, payload.allow_add_dep)
+        except PatchApplicationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        except VCSOperationError as exc:
+            raise HTTPException(status_code=500, detail=str(exc))
+        return report.model_dump()
+
+    @app.post("/ai/rollback")
+    async def ai_rollback(ctx: AppContext = Depends(lambda: get_context(app))):
+        try:
+            branch = await ctx.ai.rollback()
+        except VCSOperationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return {"branch": branch}
+
+    @app.get("/ai/status")
+    async def ai_status(ctx: AppContext = Depends(lambda: get_context(app))):
+        return await ctx.ai.status()
+
     @app.websocket("/ws/stream")
     async def stream(websocket: WebSocket):
         await websocket.accept()
@@ -214,6 +264,20 @@ def create_app() -> FastAPI:
                     if item is None:
                         break
                     await websocket.send_json({"topic": topic, "data": item})
+            except WebSocketDisconnect:
+                return
+
+    @app.websocket("/ws/ai")
+    async def ai_events(websocket: WebSocket):
+        await websocket.accept()
+        ctx = get_context(app)
+        async with ctx.bus.subscribe("ai") as queue:
+            try:
+                while True:
+                    item = await queue.get()
+                    if item is None:
+                        break
+                    await websocket.send_json(item)
             except WebSocketDisconnect:
                 return
 

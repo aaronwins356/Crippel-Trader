@@ -55,6 +55,37 @@ npm run dev
 
 The dashboard connects to the local FastAPI service (`http://localhost:8000`) and streams ticks, fills, and metrics over WebSockets.
 
+## AI Engineer
+
+The automated AI engineer monitors logs, runtime metrics, and Git history to propose and validate performance or robustness fixes.
+
+### REST API
+
+```bash
+# Request a suggestion for a suspected slow SMA loop
+curl -X POST http://localhost:8000/ai/suggest \
+  -H "Content-Type: application/json" \
+  -d '{"issue": "Investigate SMA loop latency spikes", "contextFiles": ["backend/croc/strategy/rule_sma.py"]}'
+
+# Apply a previously returned diff after sandbox validation
+curl -X POST http://localhost:8000/ai/apply \
+  -H "Content-Type: application/json" \
+  -d '{"diff": "<unified diff from suggest>", "allow_add_dep": false}'
+
+# Roll back the last AI-generated branch
+curl -X POST http://localhost:8000/ai/rollback
+
+# Inspect the latest analysis, diff, and sandbox results
+curl http://localhost:8000/ai/status
+```
+
+### Dashboard Workflow
+
+- Open the dashboard (`npm run dev`) and locate the **AI Engineer** panel.
+- Enter an issue description and optional context files to request a diff.
+- Review the unified diff preview with keyboard navigation, run sandbox checks, and apply if all gates pass.
+- Streamed AI events and sandbox results are visible in real time for audit and approval.
+
 ## Make Targets
 
 ```bash

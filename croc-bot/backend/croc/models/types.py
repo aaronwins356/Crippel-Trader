@@ -98,6 +98,12 @@ class Metrics(BaseModel):
     exposure: float = 0.0
     drawdown: float = 0.0
     latency_ms: float = 0.0
+    loop_p99_ms: float = 0.0
+    inference_p99_ms: float = 0.0
+    error_rate: float = 0.0
+    pnl_1h: float = 0.0
+    pnl_1d: float = 0.0
+    drawdown_1d: float = 0.0
 
 
 __all__ = ["Tick", "Order", "Fill", "Position", "Metrics", "Side", "OrderType"]
