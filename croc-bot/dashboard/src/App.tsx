@@ -4,6 +4,7 @@ import TradesTable from "./components/TradesTable";
 import OrderStream from "./components/OrderStream";
 import Chart from "./components/Chart";
 import Controls from "./components/Controls";
+import AiPanel from "./components/AiPanel";
 import { useDashboardStore } from "./store";
 
 function App() {
@@ -34,6 +35,7 @@ function App() {
         </div>
         <div className="space-y-6">
           <Controls />
+          <AiPanel />
           <OrderStream ticks={ticks.slice(-20)} />
         </div>
       </div>

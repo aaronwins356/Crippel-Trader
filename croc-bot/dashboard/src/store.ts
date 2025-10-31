@@ -17,6 +17,12 @@ export interface Metrics {
   exposure: number;
   drawdown: number;
   latency_ms: number;
+  loop_p99_ms: number;
+  inference_p99_ms: number;
+  error_rate: number;
+  pnl_1h: number;
+  pnl_1d: number;
+  drawdown_1d: number;
 }
 
 export interface TradeFill {

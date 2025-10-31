@@ -34,7 +34,18 @@ class OrjsonFormatter(logging.Formatter):
             payload["exc_info"] = self.formatException(record.exc_info)
         if record.stack_info:
             payload["stack_info"] = record.stack_info
-        for key in ("request_id", "symbol", "mode", "loop_ms", "latency_ms"):
+        for key in (
+            "request_id",
+            "symbol",
+            "mode",
+            "loop_ms",
+            "latency_ms",
+            "component",
+            "event",
+            "timing_ms",
+            "error_class",
+            "stack_hash",
+        ):
             if key in record.__dict__ and record.__dict__[key] is not None:
                 payload[key] = record.__dict__[key]
         return orjson.dumps(payload).decode("utf-8")

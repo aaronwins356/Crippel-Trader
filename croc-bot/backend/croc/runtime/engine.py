@@ -86,34 +86,40 @@ class Engine:
     async def _run_pipeline(self) -> None:
         try:
             while self._running:
-                tick = await self._tick_queue.get()
-                self.datastore.append_tick(tick)
-                await self.bus.publish("ticks", tick.model_dump())
-                await self.metrics.record_tick(tick)
-                features = self.feature_state.update(tick)
-                if features is None:
-                    continue
-                position = self.risk.positions.get(tick.symbol, Position(symbol=tick.symbol))
-                order = await self.strategy.on_tick(tick, features, position)
-                if order is None:
-                    continue
+                loop_start = perf_counter()
                 try:
-                    self.risk.check_order(order, tick.mid)
-                except RiskError as exc:
-                    await self.bus.publish("alerts", {"type": "risk", "message": str(exc)})
-                    continue
-                latency_start = perf_counter()
-                fill = await self.broker.submit(order)
-                latency_ms = (perf_counter() - latency_start) * 1000
-                position = self.risk.update_fill(fill)
-                await self.strategy.on_fill(fill, position)
-                await self.metrics.record_fill(fill, position.size, self.risk.state.max_drawdown, latency_ms)
-                self.datastore.append_fill(fill)
-                await self.bus.publish("fills", fill.model_dump())
-                metrics = await self.metrics.snapshot()
-                self.datastore.append_metrics(metrics)
-                await self.bus.publish("metrics", metrics.model_dump())
-                self._maybe_reload_policy()
+                    tick = await self._tick_queue.get()
+                    self.datastore.append_tick(tick)
+                    await self.bus.publish("ticks", tick.model_dump())
+                    await self.metrics.record_tick(tick)
+                    features = self.feature_state.update(tick)
+                    if features is None:
+                        continue
+                    position = self.risk.positions.get(tick.symbol, Position(symbol=tick.symbol))
+                    order = await self.strategy.on_tick(tick, features, position)
+                    if order is None:
+                        continue
+                    try:
+                        self.risk.check_order(order, tick.mid)
+                    except RiskError as exc:
+                        await self.metrics.record_error()
+                        await self.bus.publish("alerts", {"type": "risk", "message": str(exc)})
+                        continue
+                    latency_start = perf_counter()
+                    fill = await self.broker.submit(order)
+                    latency_ms = (perf_counter() - latency_start) * 1000
+                    position = self.risk.update_fill(fill)
+                    await self.strategy.on_fill(fill, position)
+                    await self.metrics.record_fill(fill, position.size, self.risk.state.max_drawdown, latency_ms)
+                    self.datastore.append_fill(fill)
+                    await self.bus.publish("fills", fill.model_dump())
+                    metrics = await self.metrics.snapshot()
+                    self.datastore.append_metrics(metrics)
+                    await self.bus.publish("metrics", metrics.model_dump())
+                    self._maybe_reload_policy()
+                finally:
+                    loop_ms = (perf_counter() - loop_start) * 1000
+                    await self.metrics.record_loop_iteration(loop_ms)
         except asyncio.CancelledError:  # pragma: no cover - cooperative shutdown
             pass
 
