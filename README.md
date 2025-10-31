@@ -10,6 +10,21 @@ CrocBot is a minimal, extensible trading bot framework written in Python 3.11+. 
 - Paper trading simulation with balance, equity, and PnL tracking
 - Optional AI assistant integration point
 
+## Modular Architecture
+
+The repository now ships with a modular scaffold optimized for ML/RL-driven
+trading workloads. New top-level packages include:
+
+- `data/` – market data ingestion and feature engineering utilities
+- `models/` – standardized model interfaces and RL integration helpers
+- `strategies/` – model-aware strategy abstractions and factories
+- `executors/` – async order execution and venue adapters
+- `pipelines/` – online/offline training flows
+- `orchestration/` – event loops coordinating live data, inference, and orders
+- `utils/` – shared logging, configuration, metrics, and dependency injection
+
+See `docs/ARCHITECTURE.md` for migration guidance and wiring examples.
+
 ## Installation
 
 ```bash
