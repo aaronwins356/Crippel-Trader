@@ -1,47 +1,56 @@
-# CrocBot
+# CrocBot 🐊
 
-CrocBot is a minimal, extensible trading bot framework written in Python 3.11+. It focuses on clean architecture, deterministic simulations, and clear logging so you can experiment with trading ideas safely. The current implementation simulates a moving-average crossover strategy on a synthetic market data feed. **This project is for educational purposes only and is not financial advice.**
+**CrocBot** is a production-ready research sandbox for systematic traders. Built on Python 3.11+, it delivers a clean, modular
+architecture for experimenting with quantitative ideas while keeping simulations deterministic, logs transparent, and risk controls
+a front-and-center priority. This project is provided **for educational purposes only** and should not be treated as financial
+advice.
 
-## Features
-- Config-driven architecture with JSON configuration
-- Deterministic synthetic market data feed (random walk)
-- Simple moving-average crossover strategy
-- Risk management for drawdown, stop-loss, and position sizing
-- Paper trading simulation with balance, equity, and PnL tracking
-- Optional AI assistant integration point
+## 🚀 Why CrocBot
+- Config-driven workflow that boots in minutes
+- Deterministic synthetic market feed for reliable experiments
+- Moving-average crossover reference strategy with guardrails
+- Built-in risk controls for drawdowns, stop-losses, and sizing
+- Paper trading ledger that tracks balance, equity, and PnL
+- Extension hooks for ML/RL models, execution adapters, and AI copilots
 
-## Modular Architecture
-
-The repository now ships with a modular scaffold optimized for ML/RL-driven
-trading workloads. New top-level packages include:
-
-- `data/` – market data ingestion and feature engineering utilities
-- `models/` – standardized model interfaces and RL integration helpers
-- `strategies/` – model-aware strategy abstractions and factories
-- `executors/` – async order execution and venue adapters
-- `pipelines/` – online/offline training flows
-- `orchestration/` – event loops coordinating live data, inference, and orders
+## 🧠 System Architecture at a Glance
+- `data/` – ingestion utilities and feature engineering helpers
+- `models/` – reusable model interfaces and RL adapters
+- `strategies/` – strategy factories that stay model-aware
+- `executors/` – async order routing and venue abstractions
+- `pipelines/` – training, evaluation, and deployment flows
+- `orchestration/` – event loops that coordinate data, inference, and orders
 - `utils/` – shared logging, configuration, metrics, and dependency injection
 
-See `docs/ARCHITECTURE.md` for migration guidance and wiring examples.
+For deeper guidance, visit `docs/ARCHITECTURE.md`.
 
-## Installation
+## 🧩 Prerequisites
+- Python 3.11+
+- Recommended: `virtualenv` or `venv`
 
-```bash
-python -m venv .venv
-source .venv/bin/activate  # On Windows use: .venv\\Scripts\\activate
-pip install -e .[dev]
-```
+## ✅ Quick Launch Guide
+1. **Create an isolated environment**
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
+   ```
+2. **Install CrocBot and developer tooling**
+   ```bash
+   pip install -e .[dev]
+   ```
+3. **Review or tweak the simulation config** in `config/config.json` (see the breakdown below).
+4. **Run the paper-trading engine**
+   ```bash
+   python -m croc_bot.orchestration.cli --config config/config.json
+   ```
+5. **Inspect logs and results** in the console output to validate strategy behaviour.
 
-## Configuration
-
-All runtime parameters are defined in `config/config.json`.
+## 🛠 Configuration Cheatsheet
+`config/config.json` centralizes all runtime knobs:
 
 ```json
 {
-  "trading": {
-    "max_steps": 500
-  },
+  "trading": { "max_steps": 500 },
   "feed": {
     "symbol": "FAKE-USD",
     "interval_seconds": 1,
@@ -49,10 +58,7 @@ All runtime parameters are defined in `config/config.json`.
     "volatility": 0.5,
     "seed": 42
   },
-  "strategy": {
-    "fast_window": 5,
-    "slow_window": 12
-  },
+  "strategy": { "fast_window": 5, "slow_window": 12 },
   "risk": {
     "max_drawdown": 0.2,
     "stop_loss_pct": 0.05,
@@ -66,27 +72,18 @@ All runtime parameters are defined in `config/config.json`.
 }
 ```
 
-- `trading.max_steps`: Maximum number of ticks to simulate.
-- `feed.*`: Parameters controlling the deterministic synthetic price stream.
-- `strategy.fast_window` & `slow_window`: Window sizes for the moving averages.
-- `risk.*`: Constraints on drawdown, stop-loss trigger, and position sizing.
-- `execution.*`: Paper trading settings such as starting cash and trading fees.
-- `monitoring.*`: Toggles for structured logging and Prometheus metrics.
+Key fields:
+- `trading.max_steps` – maximum number of ticks to simulate
+- `feed.*` – parameters for the deterministic synthetic price stream
+- `strategy.fast_window` & `strategy.slow_window` – moving-average window sizes
+- `risk.*` – drawdown, stop-loss, sizing, and notional caps
+- `simulation.*` – paper trading balance and fee assumptions
 
-## Usage
-
-After installation, run the modular engine in paper mode:
-
-```bash
-python -m croc_bot.orchestration.cli --config config/config.json
-```
-
-## Testing
-
+## 🧪 Run Tests
 ```bash
 pytest
 ```
 
-## Disclaimer
-
-This repository demonstrates a simplified simulation and omits real-world complexities such as latency, slippage, liquidity, and exchange connectivity. Do not use it for live trading without significant enhancements and thorough testing.
+## ⚠️ Disclaimer
+CrocBot simplifies market structure and omits real-world concerns such as latency, slippage, liquidity, and exchange
+connectivity. Do not deploy it for live trading without extensive enhancements, validations, and risk reviews.
