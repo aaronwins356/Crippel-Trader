@@ -1,9 +1,10 @@
-# Environment files
-*.env
-*.env.*
-
-# Local LLM weights
-models/
-*.gguf
-models/**/*.safetensors
-models/**/*.bin
+__pycache__/
+*.py[cod]
+*.log
+.env
+.venv/
+.pytest_cache/
+.mypy_cache/
+.DS_Store
+.idea/
+.vscode/
