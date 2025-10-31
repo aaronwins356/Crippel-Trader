@@ -65,6 +65,8 @@ class RiskLimits(BaseModel):
     max_position: float = Field(default=1.0, ge=0)
     max_notional: float = Field(default=10_000.0, ge=0)
     max_daily_drawdown: float = Field(default=500.0, ge=0)
+    active_model_max_exposure_pct: float = Field(default=1.0, ge=0.0, le=1.0)
+    new_model_max_exposure_pct: float = Field(default=0.2, ge=0.0, le=1.0)
 
 
 class ExecutionConfig(BaseModel):

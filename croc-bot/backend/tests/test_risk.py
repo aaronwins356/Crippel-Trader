@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
 
+from datetime import datetime, timezone
+
 import pytest
 
 from croc.config import RiskLimits, TradingMode
@@ -32,7 +34,13 @@ def make_fill(size: float, price: float, side: Side = Side.BUY) -> Fill:
 
 
 def test_position_limit_enforced():
-    limits = RiskLimits(max_position=1.0, max_notional=10_000.0, max_daily_drawdown=1000.0)
+    limits = RiskLimits(
+        max_position=1.0,
+        max_notional=10_000.0,
+        max_daily_drawdown=1000.0,
+        active_model_max_exposure_pct=1.0,
+        new_model_max_exposure_pct=0.1,
+    )
     manager = RiskManager(limits)
     order = make_order(size=2.0, price=25_000)
     with pytest.raises(RiskError):
@@ -40,7 +48,13 @@ def test_position_limit_enforced():
 
 
 def test_drawdown_triggers_kill_switch():
-    limits = RiskLimits(max_position=5.0, max_notional=1_000_000.0, max_daily_drawdown=10.0)
+    limits = RiskLimits(
+        max_position=5.0,
+        max_notional=1_000_000.0,
+        max_daily_drawdown=10.0,
+        active_model_max_exposure_pct=1.0,
+        new_model_max_exposure_pct=0.1,
+    )
     manager = RiskManager(limits)
     manager.update_fill(make_fill(1.0, 10.0, Side.BUY))
     manager.update_fill(
@@ -57,3 +71,20 @@ def test_drawdown_triggers_kill_switch():
     assert manager.state.kill_switch
     with pytest.raises(RiskError):
         manager.check_order(make_order(0.1, 10.0), price=10.0)
+
+
+def test_new_model_exposure_limit():
+    limits = RiskLimits(
+        max_position=5.0,
+        max_notional=1_000_000.0,
+        max_daily_drawdown=10_000.0,
+        active_model_max_exposure_pct=1.0,
+        new_model_max_exposure_pct=0.1,
+    )
+    manager = RiskManager(limits)
+    manager.set_model_tier("new")
+    order = make_order(size=3.0, price=50_000.0)
+    # exposure limit 10% of max_notional -> 100_000, order notional 150_000
+    manager.positions.clear()
+    with pytest.raises(RiskError):
+        manager.check_order(order, price=50_000.0)

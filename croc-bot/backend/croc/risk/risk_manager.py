@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
-from typing import Dict
+from typing import Dict, Literal, Optional
 
 from ..config import RiskLimits
 from ..models.types import Fill, Order, Position, Side
+from ..bus import EventBus
 
 
 class RiskError(RuntimeError):
@@ -19,6 +21,7 @@ class RiskState:
     equity_current: float = 0.0
     max_drawdown: float = 0.0
     kill_switch: bool = False
+    tier: Literal["active", "new"] = "active"
 
 
 @dataclass
@@ -26,6 +29,7 @@ class RiskManager:
     limits: RiskLimits
     positions: Dict[str, Position] = field(default_factory=dict)
     state: RiskState = field(default_factory=RiskState)
+    bus: Optional[EventBus] = None
 
     def check_order(self, order: Order, price: float) -> None:
         if self.state.kill_switch:
@@ -34,7 +38,7 @@ class RiskManager:
         if abs(projected.size) > self.limits.max_position:
             raise RiskError("Position limit breached")
         notional = abs(projected.size * price)
-        if notional > self.limits.max_notional:
+        if notional > self._notional_limit():
             raise RiskError("Notional limit breached")
         if self.state.max_drawdown >= self.limits.max_daily_drawdown:
             self.state.kill_switch = True
@@ -65,9 +69,17 @@ class RiskManager:
         self.state.max_drawdown = max(self.state.max_drawdown, drawdown)
         if self.state.max_drawdown >= self.limits.max_daily_drawdown:
             self.state.kill_switch = True
+            self._emit_event(
+                "risk",
+                {
+                    "type": "kill_switch",
+                    "reason": "daily_drawdown",
+                    "drawdown": self.state.max_drawdown,
+                },
+            )
 
     def reset_day(self) -> None:
-        self.state = RiskState()
+        self.state = RiskState(tier=self.state.tier)
         for position in self.positions.values():
             position.realised_pnl = 0.0
 
@@ -78,6 +90,24 @@ class RiskManager:
         self.state.kill_switch = False
         self.state.max_drawdown = 0.0
         self.state.equity_peak = self.state.equity_current
+
+    def set_model_tier(self, tier: Literal["active", "new"]) -> None:
+        self.state.tier = tier
+
+    def _notional_limit(self) -> float:
+        base = self.limits.max_notional
+        if self.state.tier == "new":
+            return base * self.limits.new_model_max_exposure_pct
+        return base * self.limits.active_model_max_exposure_pct
+
+    def _emit_event(self, topic: str, payload: dict) -> None:
+        if not self.bus:
+            return
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        loop.create_task(self.bus.publish(topic, payload))
 
 
 __all__ = ["RiskManager", "RiskError", "RiskState"]

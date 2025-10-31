@@ -5,6 +5,8 @@ import OrderStream from "./components/OrderStream";
 import Chart from "./components/Chart";
 import Controls from "./components/Controls";
 import AiPanel from "./components/AiPanel";
+import RlPanel from "./components/RlPanel";
+import ShadowIndicator from "./components/ShadowIndicator";
 import { useDashboardStore } from "./store";
 
 function App() {
@@ -28,6 +30,7 @@ function App() {
         <div className="text-sm text-slate-400">Engine: {engineRunning ? "Running" : "Stopped"}</div>
       </header>
       <MetricsCards metrics={metrics} />
+      <ShadowIndicator />
       <div className="grid gap-6 xl:grid-cols-3">
         <div className="space-y-6 xl:col-span-2">
           <Chart ticks={ticks} fills={fills} />
@@ -35,6 +38,7 @@ function App() {
         </div>
         <div className="space-y-6">
           <Controls />
+          <RlPanel />
           <AiPanel />
           <OrderStream ticks={ticks.slice(-20)} />
         </div>
